@@ -12,7 +12,10 @@ import {
 ,	_403
 } from '../SAT/Bullet.js'
 
-import { MemoryCluster }	from '../jsonables/cluster.js'
+import {
+	MemoryCluster
+,	IndexedCluster
+} from '../jsonables/cluster.js'
 import { DBRoutes }			from './routes-db.js'
 
 const
@@ -37,7 +40,12 @@ for ( const db of fs.existsSync( DATA ) ? fs.readdirSync( DATA ) : [] ) {
 		if ( !file.endsWith( '.meta.json' ) ) continue
 		const
 		table = file.slice( 0, -'.meta.json'.length )
-		;( clusters[ db ] ??= {} )[ table ] = await new MemoryCluster( dir, table, { writable: WritableDB( db ) } ).load()
+
+		//	Tables with a prebuilt .idx (see tools/build-jv-index.js) are read from disk on
+		//	demand instead of held in memory.
+		;( clusters[ db ] ??= {} )[ table ] = fs.existsSync( path.join( dir, `${ table }.idx` ) )
+		?	await new IndexedCluster( dir, table ).load()
+		:	await new MemoryCluster( dir, table, { writable: WritableDB( db ) } ).load()
 	}
 }
 

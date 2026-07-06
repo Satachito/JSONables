@@ -55,11 +55,21 @@ List = ( S, cluster, query ) => {
 		:	line => String( JSON.parse( line )[ field ] ?? '' ).includes( contains )
 	}
 
+	//	Secondary-index lookups (e.g. /db/jv/jv_se_race_uma/?ketto=<KettoNum>)
+	let
+	source = cluster.scan( prefix )
+	for ( const name in cluster.secondary ?? {} ) if ( query.has( name ) ) {
+		source = function* () {
+			for ( const key of cluster.lookup( name, query.get( name ) ) ) if ( key.startsWith( prefix ) ) yield [ key, cluster.get( key ) ]
+		}()
+		break
+	}
+
 	const
 	parts = []
 	let
 	count = 0
-	for ( const [ key, line ] of cluster.scan( prefix ) ) {
+	for ( const [ key, line ] of source ) {
 		if ( filter && !filter( line ) ) continue
 		parts.push( `[${ JSON.stringify( key ) },${ line }]` )
 		if ( ++count >= limit ) break
