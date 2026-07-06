@@ -52,6 +52,10 @@ Each JSONable is identified by an internal generated id.
 
 Generated ids are strings.
 
+- `id`: JSONables internal generated ID. CRUD operations use this ID.
+- `keyFields`: logical key for legacy, JV, and SQL compatibility. It is used for
+  lookup, duplicate checks, and import collapse.
+
 Domain keys may still be described in metadata for lookup, import, or compatibility,
 but CRUD identity is independent of the JSONable's fields.
 

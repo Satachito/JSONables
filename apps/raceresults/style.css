@@ -1,0 +1,200 @@
+.race-results {
+	display: grid;
+	grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
+	height: calc(100vh - 35px);
+	background: #eef1f4;
+}
+
+.controls {
+	overflow: auto;
+	padding: 10px;
+	border-right: 1px solid #c9d0d7;
+	background: #f8f9fb;
+}
+
+.section-title {
+	margin: 10px 0 6px;
+	font-weight: bold;
+	color: #314050;
+}
+
+.form-grid,
+.pace-grid {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 8px;
+}
+
+.form-grid label,
+.pace-grid label {
+	display: grid;
+	gap: 3px;
+}
+
+.form-grid span,
+.pace-grid span {
+	color: #53606c;
+	font-size: 12px;
+}
+
+.controls input,
+.controls select {
+	width: 100%;
+	min-height: 28px;
+	padding: 3px 6px;
+	border: 1px solid #b8c0c8;
+	border-radius: 3px;
+	background: #fff;
+	font: inherit;
+}
+
+.button-row,
+.search-row {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 8px;
+	margin-top: 8px;
+}
+
+.search-row {
+	grid-template-columns: minmax(0, 1fr) 96px 64px;
+}
+
+.controls button {
+	min-height: 30px;
+	border: 1px solid #8795a3;
+	border-radius: 3px;
+	background: #fff;
+	color: #1f2933;
+	font: inherit;
+	cursor: pointer;
+}
+
+.controls button:hover:not(:disabled) {
+	background: #e7edf3;
+}
+
+.controls button:disabled {
+	color: #999;
+	cursor: default;
+}
+
+.race-list,
+.search-results {
+	display: grid;
+	gap: 4px;
+	max-height: 260px;
+	overflow: auto;
+}
+
+.race-item,
+.search-item {
+	display: grid;
+	gap: 2px;
+	width: 100%;
+	padding: 6px 8px;
+	border: 1px solid #cbd3dc;
+	border-radius: 4px;
+	background: #fff;
+	text-align: left;
+}
+
+.race-item.selected,
+.search-item:hover {
+	border-color: #4c789d;
+	background: #e6f0f8;
+}
+
+.race-main {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: 8px;
+}
+
+.race-no {
+	font-weight: bold;
+	color: #17212b;
+}
+
+.race-meta,
+.search-meta {
+	color: #596775;
+	font-size: 12px;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.preview-area {
+	display: grid;
+	grid-template-rows: auto minmax(0, 1fr);
+	min-width: 0;
+}
+
+.preview-toolbar {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	min-height: 40px;
+	padding: 8px 12px;
+	border-bottom: 1px solid #c9d0d7;
+	background: #fff;
+}
+
+.race-title {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	font-weight: bold;
+}
+
+.preview-toolbar .status {
+	margin-left: auto;
+	color: #606c78;
+	white-space: nowrap;
+}
+
+.preview {
+	overflow: auto;
+	padding: 16px;
+	background: #dbe1e7;
+}
+
+.preview canvas {
+	display: block;
+	max-width: min(100%, 827px);
+	height: auto;
+	margin: 0 auto;
+	background: #fff;
+	box-shadow: 0 1px 4px rgba(0, 0, 0, .22);
+}
+
+.empty {
+	padding: 8px;
+	color: #66727f;
+}
+
+@media (max-width: 760px) {
+	.race-results {
+		grid-template-columns: 1fr;
+		grid-template-rows: auto minmax(0, 1fr);
+		height: auto;
+		min-height: calc(100vh - 35px);
+	}
+
+	.controls {
+		border-right: none;
+		border-bottom: 1px solid #c9d0d7;
+	}
+
+	.race-list,
+	.search-results {
+		max-height: 180px;
+	}
+
+	.preview {
+		padding: 10px;
+	}
+}
