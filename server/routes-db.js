@@ -1,10 +1,11 @@
 //	Generic JSONables CRUD over clusters, mounted at /db/ via Bullet.js prefix routing.
 //
-//		GET/POST/PUT/DELETE	/db/{cluster}/{table}/{key}
+//		GET/PUT/DELETE		/db/{cluster}/{table}/{id}
+//		POST				/db/{cluster}/{table}/
 //		GET					/db/{cluster}/{table}/meta[/recordCount|/fields|/types]
 //		GET					/db/{cluster}/{table}/?prefix=&limit=&field=&contains=
 //
-//	List responses are arrays of [ key, record ] pairs, streamed from raw lines (zero-parse
+//	List responses are arrays of [ id, record ] pairs, streamed from raw lines (zero-parse
 //	unless a field filter is given).
 
 import {
@@ -101,9 +102,10 @@ DBRoutes = clusters => ( {
 
 		try {
 			if ( tail === '' ) {
-				//	/db/{c}/{t}/  — list
-				if ( Q.method !== 'GET' ) return _405( S )
-				return List( S, cluster, QueryOf( Q ) )
+				//	/db/{c}/{t}/  — list or generated-id create
+				if ( Q.method === 'GET' ) return List( S, cluster, QueryOf( Q ) )
+				if ( Q.method === 'POST' ) return SendJSONable( S, cluster.post( await BodyAsJSON( Q ) ) )
+				return _405( S )
 			}
 			if ( tail === 'meta' || tail.startsWith( 'meta/' ) ) {
 				if ( Q.method !== 'GET' ) return _405( S )
@@ -111,16 +113,15 @@ DBRoutes = clusters => ( {
 			}
 
 			const
-			key = tail
+			id = tail
 			switch ( Q.method ) {
 			case 'GET': {
 				const
-				line = cluster.get( key )
+				line = cluster.get( id )
 				return line === undefined ? _404( S ) : SendRaw( S, line )
 			}
-			case 'POST'		: return cluster.post( key, await BodyAsJSON( Q ) ), SendJSONable( S, true )
-			case 'PUT'		: return cluster.put( key, await BodyAsJSON( Q ) ), SendJSONable( S, true )
-			case 'DELETE'	: return cluster.del( key ), SendJSONable( S, true )
+			case 'PUT'		: return cluster.put( id, await BodyAsJSON( Q ) ), SendJSONable( S, true )
+			case 'DELETE'	: return cluster.del( id ), SendJSONable( S, true )
 			default			: return _405( S )
 			}
 		} catch ( e ) {

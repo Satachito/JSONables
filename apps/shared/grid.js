@@ -1,12 +1,9 @@
 //	EditableGrid: DataGridView-equivalent over a JSONables LegacyCluster.
 //	Loads the whole table (what the WinForms apps did), edits in place, and saves
 //	explicit diffs: added → POST, changed → PUT, removed → DELETE.
-//	Changing a key field saves as DELETE + POST.
+//	Rows are addressed by JSONables-generated ids; keyFields are just data.
 
 import { LegacyCluster } from '/jsonables/client.js'
-
-const
-KeyOf = ( object, keyFields ) => keyFields.map( f => String( object[ f ] ?? '' ) ).join( '|' )
 
 export class
 EditableGrid {
@@ -16,7 +13,7 @@ EditableGrid {
 		this.container = container
 		this.config = config
 		this.cluster = new LegacyCluster( config.db, config.table )
-		this.rows = []			//	{ key|null (null = new), object, deleted }
+		this.rows = []			//	{ id|null (null = new), object, deleted }
 		this.dirty = new Set()	//	row indexes changed
 		this.filterText = ''
 		this.onDirty = () => {}
@@ -27,8 +24,8 @@ EditableGrid {
 		this.fields = this.config.columns ?? this.meta.fields
 		this.keyFields = this.meta.keyFields
 		const
-		entries = await this.cluster.listObjects()
-		this.rows = entries.map( ( [ key, object ] ) => ( { key, object, deleted: false } ) )
+			entries = await this.cluster.listObjects()
+		this.rows = entries.map( ( [ id, object ] ) => ( { id, object, deleted: false } ) )
 		this.dirty.clear()
 		this.Render()
 	}
@@ -74,7 +71,7 @@ EditableGrid {
 		for ( const tr of this.container.querySelectorAll( 'tr.selected' ) ) {
 			const
 			row = this.rows[ Number( tr.dataset.index ) ]
-			row.key === null
+			row.id === null
 			?	this.rows.splice( Number( tr.dataset.index ), 1 )
 			:	( row.deleted = true, this.dirty.add( Number( tr.dataset.index ) ) )
 			any = true
@@ -93,18 +90,13 @@ EditableGrid {
 			const
 			row = this.rows[ i ]
 			if ( row.deleted ) {
-				if ( row.key !== null ) await this.cluster.del( row.key )
+				if ( row.id !== null ) await this.cluster.del( row.id )
 				continue
 			}
-			const
-			key = KeyOf( row.object, this.keyFields )
-			if ( row.key === null ) {
-				await this.cluster.postObject( key, row.object )
-			} else if ( key === row.key ) {
-				await this.cluster.putObject( key, row.object )
+			if ( row.id === null ) {
+				await this.cluster.postObject( row.object )
 			} else {
-				await this.cluster.del( row.key )
-				await this.cluster.postObject( key, row.object )
+				await this.cluster.putObject( row.id, row.object )
 			}
 		}
 		await this.load()
@@ -152,7 +144,7 @@ EditableGrid {
 			const
 			tr = tbody.insertRow()
 			tr.dataset.index = index
-			if ( row.key === null ) tr.className = 'new'
+			if ( row.id === null ) tr.className = 'new'
 			tr.addEventListener( 'click', e => {
 				if ( e.target.isContentEditable && e.target === document.activeElement ) return
 				if ( !e.metaKey && !e.shiftKey ) for ( const s of tbody.querySelectorAll( 'tr.selected' ) ) if ( s !== tr ) s.classList.remove( 'selected' )

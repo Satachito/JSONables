@@ -48,26 +48,24 @@ JSONables is a mechanism for handling clusters of JSONables.
 
 ## Key
 
-Each JSONable is identified by a unique key.
+Each JSONable is identified by an internal generated id.
 
-Supported key types:
+Generated ids are strings.
 
-- String
-- Numeric
-
-Deleted keys should not be reused.
+Domain keys may still be described in metadata for lookup, import, or compatibility,
+but CRUD identity is independent of the JSONable's fields.
 
 ## Interface
 
 ### CRUD
 
-POST /key
+POST /
 
-GET /key
+GET /id
 
-PUT /key
+PUT /id
 
-DELETE /key
+DELETE /id
 
 ### Metadata
 

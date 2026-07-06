@@ -14,14 +14,14 @@ Cluster {
 		this.base = `/db/${ db }/${ table }/`
 	}
 
-	URL( key ) {
-		return this.base + encodeURIComponent( key )
+	URL( id ) {
+		return this.base + encodeURIComponent( id )
 	}
 
-	async get( key )			{ return ( await ThrowOnError( await fetch( this.URL( key ) ) ) ).json() }
-	async post( key, record )	{ return ThrowOnError( await fetch( this.URL( key ), { method: 'POST'	, body: JSON.stringify( record ) } ) ) }
-	async put( key, record )	{ return ThrowOnError( await fetch( this.URL( key ), { method: 'PUT'	, body: JSON.stringify( record ) } ) ) }
-	async del( key )			{ return ThrowOnError( await fetch( this.URL( key ), { method: 'DELETE' } ) ) }
+	async get( id )			{ return ( await ThrowOnError( await fetch( this.URL( id ) ) ) ).json() }
+	async post( record )		{ return ( await ThrowOnError( await fetch( this.base, { method: 'POST', body: JSON.stringify( record ) } ) ) ).json() }
+	async put( id, record )	{ return ThrowOnError( await fetch( this.URL( id ), { method: 'PUT', body: JSON.stringify( record ) } ) ) }
+	async del( id )			{ return ThrowOnError( await fetch( this.URL( id ), { method: 'DELETE' } ) ) }
 
 	async meta()				{ return ( await ThrowOnError( await fetch( this.base + 'meta' ) ) ).json() }
 	async recordCount()			{ return ( await ThrowOnError( await fetch( this.base + 'meta/recordCount' ) ) ).json() }
@@ -50,16 +50,16 @@ LegacyCluster extends Cluster {
 		return fields.map( f => object[ f ] ?? null )
 	}
 
-	async getObject( key ) {
-		return this.Zip( await this.fields(), await this.get( key ) )
+	async getObject( id ) {
+		return this.Zip( await this.fields(), await this.get( id ) )
 	}
 
-	async putObject( key, object ) {
-		return this.put( key, this.Unzip( await this.fields(), object ) )
+	async putObject( id, object ) {
+		return this.put( id, this.Unzip( await this.fields(), object ) )
 	}
 
-	async postObject( key, object ) {
-		return this.post( key, this.Unzip( await this.fields(), object ) )
+	async postObject( object ) {
+		return this.post( this.Unzip( await this.fields(), object ) )
 	}
 
 	async listObjects( params = {} ) {

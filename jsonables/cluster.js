@@ -3,10 +3,11 @@
 //	On disk:
 //		<dir>/<table>.jsonl        one JSONable per line (Legacy: array, Full: object)
 //		<dir>/<table>.meta.json    { style, fields?, types?, keyFields }
-//		<dir>/<table>.log.jsonl    write log: {"op":"put"|"del","key":k,"record":...}
+//		<dir>/<table>.log.jsonl    write log: {"op":"put"|"del","id":id,"record":...}
 //
 //	In memory records are kept as raw JSON line strings — GET is zero-parse.
 
+import { randomUUID } from 'crypto'
 import fs		from 'fs'
 import fsp		from 'fs/promises'
 import readline	from 'readline'
@@ -31,8 +32,41 @@ MemoryCluster {
 		this.basePath	= path.join( dir, `${ table }.jsonl` )
 		this.metaPath	= path.join( dir, `${ table }.meta.json` )
 		this.logPath	= path.join( dir, `${ table }.log.jsonl` )
-		this.map		= new Map()
+		this.map		= new Map()	//	id → raw JSON line
+		this.logical	= new Map()	//	derived keyFields key → id (legacy/import lookup)
 		this.logFD		= null
+		this.nextBaseId	= 1
+	}
+
+	GenerateID() {
+		return `id-${ randomUUID() }`
+	}
+
+	BaseID() {
+		return `base-${ this.nextBaseId++ }`
+	}
+
+	LogicalKey( record ) {
+		return this.metaData.keyFields ? DeriveKey( record, this.metaData ) : null
+	}
+
+	SetRecord( id, record, line = JSON.stringify( record ) ) {
+		this.map.set( id, line )
+		const
+		key = this.LogicalKey( record )
+		if ( key !== null ) this.logical.set( key, id )
+		return id
+	}
+
+	DeleteID( id ) {
+		const
+		line = this.map.get( id )
+		if ( line !== undefined ) {
+			const
+			key = this.LogicalKey( JSON.parse( line ) )
+			if ( key !== null && this.logical.get( key ) === id ) this.logical.delete( key )
+		}
+		return this.map.delete( id )
 	}
 
 	async load() {
@@ -46,27 +80,30 @@ MemoryCluster {
 
 		if ( fs.existsSync( this.basePath ) ) await EachLine(
 			this.basePath
-		,	line => {
+			,	line => {
 				const
 				record = JSON.parse( line )
-			,	key = DeriveKey( record, this.metaData )
-				if ( revs ) {
+			,	key = this.LogicalKey( record )
+			,	id = key === null ? this.BaseID() : this.logical.get( key ) ?? this.BaseID()
+				if ( revs && key !== null ) {
 					const
 					rev = record[ revField ] ?? ''
 					if ( ( revs.get( key ) ?? '' ) > rev ) return
 					revs.set( key, rev )
 				}
-				this.map.set( key, line )
+				this.SetRecord( id, record, line )
 			}
 		)
 
 		if ( fs.existsSync( this.logPath ) ) await EachLine(
 			this.logPath
 		,	line => {
-				const { op, key, record } = JSON.parse( line )
-				op === 'del'
-				?	this.map.delete( key )
-				:	this.map.set( key, JSON.stringify( record ) )
+				const
+				entry = JSON.parse( line )
+			,	id = entry.id ?? this.logical.get( entry.key ) ?? entry.key
+				entry.op === 'del'
+				?	this.DeleteID( id )
+				:	this.SetRecord( id, entry.record )
 			}
 		)
 
@@ -74,8 +111,8 @@ MemoryCluster {
 		return this
 	}
 
-	AppendLog( op, key, record ) {
-		fs.writeSync( this.logFD, JSON.stringify( { op, key, record } ) + '\n' )
+	AppendLog( op, id, record ) {
+		fs.writeSync( this.logFD, JSON.stringify( { op, id, record } ) + '\n' )
 		fs.fsyncSync( this.logFD )
 	}
 
@@ -84,36 +121,55 @@ MemoryCluster {
 	}
 
 	//	Returns the raw JSON line string, or undefined.
-	get( key ) {
-		return this.map.get( key )
+	get( id ) {
+		return this.map.get( id )
 	}
 
-	has( key ) {
-		return this.map.has( key )
+	has( id ) {
+		return this.map.has( id )
 	}
 
-	post( key, record ) {
+	getByKey( key ) {
+		const
+		id = this.logical.get( key )
+		return id === undefined ? undefined : this.get( id )
+	}
+
+	hasKey( key ) {
+		return this.logical.has( key )
+	}
+
+	post( record ) {
 		this.AssertWritable()
-		if ( this.map.has( key ) ) throw Object.assign( new Error( `Key exists: ${ key }` ), { status: 409 } )
-		this.map.set( key, JSON.stringify( record ) )
-		this.AppendLog( 'put', key, record )
+		const
+		id = this.GenerateID()
+		this.SetRecord( id, record )
+		this.AppendLog( 'put', id, record )
+		return id
 	}
 
-	put( key, record ) {
+	put( id, record ) {
 		this.AssertWritable()
-		this.map.set( key, JSON.stringify( record ) )
-		this.AppendLog( 'put', key, record )
+		if ( !this.map.has( id ) ) throw Object.assign( new Error( `No such id: ${ id }` ), { status: 404 } )
+		this.DeleteID( id )
+		this.SetRecord( id, record )
+		this.AppendLog( 'put', id, record )
 	}
 
-	del( key ) {
+	del( id ) {
 		this.AssertWritable()
-		if ( !this.map.delete( key ) ) throw Object.assign( new Error( `No such key: ${ key }` ), { status: 404 } )
-		this.AppendLog( 'del', key )
+		if ( !this.DeleteID( id ) ) throw Object.assign( new Error( `No such id: ${ id }` ), { status: 404 } )
+		this.AppendLog( 'del', id )
 	}
 
-	//	Yields [ key, rawLine ] for keys starting with prefix ('' = all).
+	//	Yields [ id, rawLine ] for ids starting with prefix ('' = all).
 	* scan( prefix = '' ) {
-		for ( const [ key, line ] of this.map ) if ( key.startsWith( prefix ) ) yield [ key, line ]
+		for ( const [ id, line ] of this.map ) if ( id.startsWith( prefix ) ) yield [ id, line ]
+	}
+
+	//	Legacy/import lookup over keyFields-derived logical keys.
+	* scanByKey( prefix = '' ) {
+		for ( const [ key, id ] of this.logical ) if ( key.startsWith( prefix ) ) yield [ key, this.map.get( id ) ]
 	}
 
 	recordCount() {
@@ -121,7 +177,15 @@ MemoryCluster {
 	}
 
 	meta() {
-		return { ...this.metaData, recordCount: this.map.size }
+		return {
+			...this.metaData
+		,	recordCount		: this.map.size
+		,	capabilities	: {
+				postable	: this.writable
+			,	putable		: this.writable
+			,	deletable	: this.writable
+			}
+		}
 	}
 }
 
@@ -187,6 +251,14 @@ IndexedCluster {
 		return this.map.has( key )
 	}
 
+	getByKey( key ) {
+		return this.get( key )
+	}
+
+	hasKey( key ) {
+		return this.has( key )
+	}
+
 	lookup( name, value ) {
 		return this.secondary[ name ]?.get( value ) ?? []
 	}
@@ -208,11 +280,23 @@ IndexedCluster {
 		for ( let i = low; i < keys.length && keys[ i ].startsWith( prefix ); i++ ) yield [ keys[ i ], this.ReadLine( this.map.get( keys[ i ] ) ) ]
 	}
 
+	scanByKey( prefix = '' ) {
+		return this.scan( prefix )
+	}
+
 	recordCount() {
 		return this.map.size
 	}
 
 	meta() {
-		return { ...this.metaData, recordCount: this.map.size }
+		return {
+			...this.metaData
+		,	recordCount		: this.map.size
+		,	capabilities	: {
+				postable	: false
+			,	putable		: false
+			,	deletable	: false
+			}
+		}
 	}
 }

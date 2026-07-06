@@ -125,7 +125,7 @@ ResultData = ( clusters, { year, jyo, kaiji, nichiji, racenum } ) => {
 
 	const
 	oRace = clusters.oldmac.o_race
-,	oRaceLine = oRace.get( OldmacRaceKey( jyo, year, kaiji, nichiji, racenum ) )
+,	oRaceLine = oRace.getByKey( OldmacRaceKey( jyo, year, kaiji, nichiji, racenum ) )
 	if ( !oRaceLine ) return null
 	const
 	ora = ZipLegacy( oRace, oRaceLine )
@@ -140,7 +140,7 @@ ResultData = ( clusters, { year, jyo, kaiji, nichiji, racenum } ) => {
 
 	const
 	rows = []
-	for ( const [ , line ] of orh.scan( OldmacRaceKey( jyo, year, kaiji, nichiji, racenum ) + '|' ) ) {
+	for ( const [ , line ] of orh.scanByKey( OldmacRaceKey( jyo, year, kaiji, nichiji, racenum ) + '|' ) ) {
 		const
 		horse = ZipLegacy( orh, line )
 	,	h = se.get( +horse.GATE_NO )
@@ -274,13 +274,13 @@ ImportRace = ( clusters, { year, jyo, kaiji, nichiji } ) => {
 
 		//	chuko.race の Ryakusyo3 を SHORT_NAME に
 		const
-		chukoLine = chukoRace.get( `${ +year }|${ +kaiji }|${ jyo }|${ +nichiji }|${ +ra.id_RaceNum }` )
+		chukoLine = chukoRace.getByKey( `${ +year }|${ +kaiji }|${ jyo }|${ +nichiji }|${ +ra.id_RaceNum }` )
 	,	shortName = chukoLine ? String( ZipLegacy( chukoRace, chukoLine ).RaceInfo_Ryakusyo3 ?? '' ) : ''
 
-		//	INSERT IGNORE INTO o_race
-		const
-		raceKey = OldmacRaceKey( jyo, year, kaiji, nichiji, ra.id_RaceNum )
-		if ( !oRace.has( raceKey ) ) oRace.post( raceKey, [ +jyo, +year, +kaiji, +nichiji, +ra.id_RaceNum, shortName, 0, 0, 0, 0 ] )
+	//	INSERT IGNORE INTO o_race
+	const
+	raceKey = OldmacRaceKey( jyo, year, kaiji, nichiji, ra.id_RaceNum )
+		if ( !oRace.hasKey( raceKey ) ) oRace.post( [ +jyo, +year, +kaiji, +nichiji, +ra.id_RaceNum, shortName, 0, 0, 0, 0 ] )
 
 		//	出走馬 1..TorokuTosu
 		const
@@ -355,11 +355,11 @@ ImportRace = ( clusters, { year, jyo, kaiji, nichiji } ) => {
 		}
 
 		//	INSERT IGNORE INTO o_race_horse
-		for ( const h of horses ) {
-			const
-			key = `${ raceKey }|${ +h.Umaban }`
-			if ( oRH.has( key ) ) continue
-			oRH.post( key, [
+	for ( const h of horses ) {
+		const
+		key = `${ raceKey }|${ +h.Umaban }`
+		if ( oRH.hasKey( key ) ) continue
+		oRH.post( [
 				+jyo, +year, +kaiji, +nichiji, +ra.id_RaceNum
 			,	AsInt( h, 'Umaban' )
 			,	+( horseByKetto.get( h.KettoNum ) ?? 0 )

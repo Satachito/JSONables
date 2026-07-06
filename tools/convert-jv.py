@@ -27,6 +27,8 @@ import convert_decoded_to_jsons as C  # noqa: E402
 # head_DataKubun/head_MakeDate revision fields (revisions collapse, last MakeDate wins).
 KEY_FIELDS = {
     "RA": ["id_Year", "id_MonthDay", "id_JyoCD", "id_Kaiji", "id_Nichiji", "id_RaceNum"],
+    # SE deliberately uses Bamei instead of the JRA-VAN recommended Umaban/KettoNum:
+    # foreign-race rows can have KettoNum=0, and early data may not have stable Umaban.
     "SE": ["id_Year", "id_MonthDay", "id_JyoCD", "id_Kaiji", "id_Nichiji", "id_RaceNum", "Bamei"],
     "UM": ["KettoNum"],
     "KS": ["KisyuCode"],

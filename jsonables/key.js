@@ -1,4 +1,5 @@
-//	Composite keys: primary-key field values joined with '|', in meta.keyFields order.
+//	Logical keys: legacy/import identity fields joined with '|', in meta.keyFields order.
+//	JSONables CRUD ids are generated separately; these keys support lookup/collapse.
 //	Legacy-style records are arrays (field names in meta.fields), Full-JSON records are objects.
 
 export const
