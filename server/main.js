@@ -18,6 +18,7 @@ import {
 } from '../jsonables/cluster.js'
 import { DBRoutes }			from './routes-db.js'
 import { APIRoutes }		from './routes-api.js'
+import { SQLRoutes }		from './routes-sql.js'
 
 const
 ROOT = path.resolve( path.dirname( url.fileURLToPath( import.meta.url ) ), '..' )
@@ -57,6 +58,7 @@ const
 APIs = {
 	...DBRoutes( clusters )
 ,	...APIRoutes( clusters )
+,	...SQLRoutes( clusters )
 ,	'/data/': async ( Q, S ) => _403( S )	//	raw data files are not served statically
 }
 
