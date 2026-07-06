@@ -26,7 +26,14 @@ const
 SIZE_THRESHOLD = 64 * 1024 * 1024
 
 const
-SECONDARY = { jv_se_race_uma: { name: 'ketto', field: 'KettoNum' } }
+SECONDARY = {
+	jv_se_race_uma	: { name: 'ketto', field: 'KettoNum' }
+,	jv_um_uma		: { name: 'bamei', field: 'Bamei' }
+}
+
+//	Optional args: only rebuild the named tables.
+const
+ONLY = process.argv.slice( 2 )
 
 const
 WriteJSONL = async ( file, entries ) => {
@@ -43,6 +50,8 @@ for ( const file of fs.readdirSync( DIR ).sort() ) {
 	table = file.slice( 0, -'.jsonl'.length )
 ,	basePath = path.join( DIR, file )
 ,	idxPath = path.join( DIR, `${ table }.idx` )
+
+	if ( ONLY.length && !ONLY.includes( table ) ) continue
 
 	if ( fs.statSync( basePath ).size < SIZE_THRESHOLD ) {
 		if ( fs.existsSync( idxPath ) ) fs.unlinkSync( idxPath )

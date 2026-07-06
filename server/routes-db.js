@@ -43,16 +43,20 @@ List = ( S, cluster, query ) => {
 ,	limit		= query.has( 'limit' )		? Number( query.get( 'limit' ) ) : Infinity
 ,	field		= query.get( 'field' )
 ,	contains	= query.get( 'contains' )
+,	equals		= query.get( 'equals' )
 
 	let
 	filter = null
-	if ( field && contains ) {
+	if ( field && ( contains || equals !== null ) ) {
 		const
 		meta = cluster.meta()
 	,	index = meta.fields ? meta.fields.indexOf( field ) : -1
-		filter = meta.style === 'legacy'
-		?	line => String( JSON.parse( line )[ index ] ?? '' ).includes( contains )
-		:	line => String( JSON.parse( line )[ field ] ?? '' ).includes( contains )
+	,	Value = line => {
+			const
+			record = JSON.parse( line )
+			return String( ( meta.style === 'legacy' ? record[ index ] : record[ field ] ) ?? '' )
+		}
+		filter = equals !== null ? line => Value( line ) === equals : line => Value( line ).includes( contains )
 	}
 
 	//	Secondary-index lookups (e.g. /db/jv/jv_se_race_uma/?ketto=<KettoNum>)
