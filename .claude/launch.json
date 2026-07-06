@@ -1,0 +1,11 @@
+{
+	"version": "0.0.1",
+	"configurations": [
+		{
+			"name": "jsonables",
+			"runtimeExecutable": "node",
+			"runtimeArgs": ["--max-old-space-size=4096", "server/main.js"],
+			"port": 8080
+		}
+	]
+}

@@ -17,6 +17,7 @@ import {
 ,	IndexedCluster
 } from '../jsonables/cluster.js'
 import { DBRoutes }			from './routes-db.js'
+import { APIRoutes }		from './routes-api.js'
 
 const
 ROOT = path.resolve( path.dirname( url.fileURLToPath( import.meta.url ) ), '..' )
@@ -55,6 +56,7 @@ console.log( `heap: ${ ( process.memoryUsage().heapUsed / 1024 / 1024 ).toFixed(
 const
 APIs = {
 	...DBRoutes( clusters )
+,	...APIRoutes( clusters )
 ,	'/data/': async ( Q, S ) => _403( S )	//	raw data files are not served statically
 }
 

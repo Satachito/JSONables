@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>MasterEditor</title>
+<link rel="stylesheet" href="/apps/shared/ui.css">
+<link rel="stylesheet" href="/apps/shared/print.css">
+</head>
+<body>
+<header class="appbar">
+	<h1>MasterEditor</h1>
+	<nav>
+		<a href="/apps/raceresults/">RaceResults</a>
+		<a href="/apps/umaeditor/">UmaEditor</a>
+		<a href="/apps/yuma/">YUMA</a>
+	</nav>
+</header>
+
+<div class="tabs" id="tabs"></div>
+
+<div class="toolbar">
+	<input type="text" id="filter" placeholder="フィルタ">
+	<button id="add">追加</button>
+	<button id="delete">削除</button>
+	<button id="save">保存</button>
+	<button id="print">印刷</button>
+	<span id="leadingBox" style="display:none">
+		<input type="text" id="leadingYear" size="5">
+		<button id="leading">リーディング更新</button>
+	</span>
+	<span class="status" id="status"></span>
+</div>
+
+<div class="gridbox" id="gridbox"></div>
+
+<script type="module" src="main.js"></script>
+</body>
+</html>

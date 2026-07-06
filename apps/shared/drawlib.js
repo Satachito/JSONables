@@ -149,6 +149,18 @@ Drawer {
 		g.restore()
 	}
 
+	//	Plain GDI+ g.DrawString( text, font, brush, x, y ): top-left anchored.
+	DrawString( text, name, size, x, y ) {
+		const
+		g = this.g
+		g.save()
+		this.SetFont( this.MakeFont( name, size ) )
+		g.textAlign = 'left'
+		g.textBaseline = 'top'
+		g.fillText( text, x, y )
+		g.restore()
+	}
+
 	Measure( text, font ) {
 		this.g.save()
 		this.SetFont( font )
