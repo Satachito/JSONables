@@ -21,6 +21,29 @@ ZipLegacy = ( cluster, line ) => {
 	return Object.fromEntries( fields.map( ( f, i ) => [ f, record[ i ] ] ) )
 }
 
+const
+LegacyIDByKey = ( cluster, key ) => cluster.logical?.get( key )
+
+const
+LegacyByKey = ( cluster, key ) => {
+	const
+	id = LegacyIDByKey( cluster, key )
+,	line = id === undefined ? undefined : cluster.get( id )
+	return line === undefined ? null : { id, object: ZipLegacy( cluster, line ) }
+}
+
+const
+LegacyScanByKey = ( cluster, prefix ) => {
+	const
+	rows = []
+	for ( const [ key, line ] of cluster.scanByKey( prefix ) ) {
+		const
+		id = LegacyIDByKey( cluster, key )
+		if ( id !== undefined ) rows.push( { id, object: ZipLegacy( cluster, line ) } )
+	}
+	return rows
+}
+
 //	MasterEditor 'Leading Rank' (MainForm.cs btnLeadingRank_Click):
 //	count KakuteiJyuni 1..5 per jockey over one year of confirmed results
 //	(head_DataKubun = 7), sort by [1st..5th] desc, write rank 1..10 into
@@ -419,6 +442,176 @@ SearchBamei = ( clusters, text, type ) => {
 	return results.sort( ( a, b ) => ( +b.id_Year - +a.id_Year ) || ( +b.id_MonthDay - +a.id_MonthDay ) )
 }
 
+///////////////////////////////	UmaEditor
+
+const
+MatchText = ( text, type ) => {
+	const
+	needle = String( text ?? '' )
+	return type === '前方一致'	? value => value.startsWith( needle )
+	:	type === '後方一致'		? value => value.endsWith( needle )
+	:	type === '含む'			? value => value.includes( needle )
+	:	value => value === needle
+}
+
+const
+SearchUma = ( clusters, text, type, limit = 100 ) => {
+	const
+	horses = clusters.oldmac.o_horse
+,	match = MatchText( text, type )
+,	rows = []
+	for ( const [ id, line ] of horses.scan() ) {
+		const
+		object = ZipLegacy( horses, line )
+		if ( match( String( object.NAME ?? '' ) ) ) rows.push( { id, object } )
+	}
+	return rows
+		.sort( ( a, b ) => ( +b.object.BIRTHDAY - +a.object.BIRTHDAY ) || ( +b.object.HORSE - +a.object.HORSE ) )
+		.slice( 0, limit )
+}
+
+const
+JVByNewestKey = ( cluster, key ) => {
+	let
+	best = null
+	const
+	keyField = cluster.meta().keyFields?.[ 0 ]
+	for ( const [ , line ] of cluster.scanByKey( String( key ) ) ) {
+		const
+		row = JSON.parse( line )
+		if ( keyField && String( row[ keyField ] ) !== String( key ) ) continue
+		if ( best === null || String( row.head_MakeDate ?? '' ) > String( best.head_MakeDate ?? '' ) ) best = row
+	}
+	return best
+}
+
+const
+HorseByHansyoku = ( clusters, hansyoku ) => {
+	if ( !+hansyoku ) return null
+	return HorsesByHansyoku( clusters, [ hansyoku ] ).get( String( hansyoku ) ) ?? null
+}
+
+const
+HorsesByHansyoku = ( clusters, hansyokus ) => {
+	const
+	targets = new Set( hansyokus.filter( _ => +_ ).map( _ => String( _ ) ) )
+,	found = new Map()
+	if ( targets.size === 0 ) return found
+	const
+	horses = clusters.oldmac.o_horse
+	for ( const [ id, line ] of horses.scan() ) {
+		const
+		object = ZipLegacy( horses, line )
+	,	key = String( object.HansyokuJRA ?? '' )
+		if ( targets.has( key ) ) {
+			found.set( key, { id, object } )
+			if ( found.size === targets.size ) break
+		}
+	}
+	return found
+}
+
+const
+UmaFamily = ( clusters, horse ) => {
+	const
+	LabelHorse = row => row?.object?.NAME ?? ''
+,	byId = id => LegacyByKey( clusters.oldmac.o_horse, String( Number( id ) ) )
+,	result = {
+		horse: horse.NAME ?? '', father: '', mother: '', ff: '', fm: '', mf: '', mm: ''
+	,	detail: String( horse.BIRTHDAY ?? '' ), kigou: '', prize: '', trainer: '', farm: '', owner: ''
+	,	tekisei: `距離：${ horse.TEKISEI ?? '' } 重：${ horse.OMO_TEKISEI ?? '' } ダ重：${ horse.DIRT_OMO_TEKISEI ?? '' }`
+	,	parentIds: {}
+	}
+
+	const
+	um = +horse.KettoJRA ? JVByNewestKey( clusters.jv.jv_um_uma, horse.KettoJRA ) : null
+	if ( um ) {
+		const
+		byHansyoku = HorsesByHansyoku( clusters, [
+			um.Ketto3Info_0_HansyokuNum, um.Ketto3Info_1_HansyokuNum, um.Ketto3Info_2_HansyokuNum
+		,	um.Ketto3Info_3_HansyokuNum, um.Ketto3Info_4_HansyokuNum, um.Ketto3Info_5_HansyokuNum
+		] )
+	,	father = byHansyoku.get( String( um.Ketto3Info_0_HansyokuNum ) )
+	,	mother = byHansyoku.get( String( um.Ketto3Info_1_HansyokuNum ) )
+	,	ff = byHansyoku.get( String( um.Ketto3Info_2_HansyokuNum ) )
+	,	mf = byHansyoku.get( String( um.Ketto3Info_3_HansyokuNum ) )
+	,	fm = byHansyoku.get( String( um.Ketto3Info_4_HansyokuNum ) )
+	,	mm = byHansyoku.get( String( um.Ketto3Info_5_HansyokuNum ) )
+		result.father = LabelHorse( father ) || `(${ um.Ketto3Info_0_Bamei ?? '' })`
+		result.mother = LabelHorse( mother ) || `(${ um.Ketto3Info_1_Bamei ?? '' })`
+		result.ff = LabelHorse( ff ) || `(${ um.Ketto3Info_2_Bamei ?? '' })`
+		result.mf = LabelHorse( mf ) || `(${ um.Ketto3Info_3_Bamei ?? '' })`
+		result.fm = LabelHorse( fm ) || `(${ um.Ketto3Info_4_Bamei ?? '' })`
+		result.mm = LabelHorse( mm ) || `(${ um.Ketto3Info_5_Bamei ?? '' })`
+		if ( father ) result.parentIds.father = father.object.HORSE
+		if ( mother ) result.parentIds.mother = mother.object.HORSE
+		result.prize = `本賞：${ +um.RuikeiHonsyoHeiti || 0 } 障：${ +um.RuikeiHonsyoSyogai || 0 } 総賞：${ +um.RuikeiSyutokuHeichi || 0 } 障：${ +um.RuikeiSyutokuSyogai || 0 }`
+		result.detail = [ horse.BIRTHDAY, { 1: '牡', 2: '牝', 3: '騙' }[ um.SexCD ] ?? '', { '01': '栗毛', '02': '栃栗', '03': '鹿毛', '04': '黒鹿', '05': '青鹿', '06': '青毛', '07': '芦毛', '08': '栗粕', '09': '鹿粕', '10': '青粕', '11': '白毛' }[ um.KeiroCD ] ?? '' ].filter( Boolean ).join( ' ' )
+		result.kigou = { '06': '○外', '16': '○外', '20': '○外', '05': '○地', '09': '○地', '10': '○地', '12': '○地', '26': '□外', '27': '□外', '21': '□地', '23': '□地', '24': '□地', '25': '□地', '11': '○外地', '40': '○外地', '22': '□外地', '41': '□外地' }[ um.UmaKigoCD ] ?? ''
+		result.trainer = JVByNewestKey( clusters.jv.jv_ch_chokyosi, um.ChokyosiCode )?.ChokyosiName ?? ''
+		result.farm = JVByNewestKey( clusters.jv.jv_br_breeder, um.BreederCode )?.BreederName ?? ''
+		result.owner = JVByNewestKey( clusters.jv.jv_bn_banusi, um.BanusiCode )?.BanusiName ?? ''
+		return result
+	}
+
+	const
+	father = byId( horse.FATHER )
+,	mother = byId( horse.MOTHER )
+,	ff = father ? byId( father.object.FATHER ) : null
+,	mf = father ? byId( father.object.MOTHER ) : null
+,	fm = mother ? byId( mother.object.FATHER ) : null
+,	mm = mother ? byId( mother.object.MOTHER ) : null
+	result.father = LabelHorse( father ) || '(不明)'
+	result.mother = LabelHorse( mother ) || '(不明)'
+	result.ff = LabelHorse( ff ) || '(不明)'
+	result.mf = LabelHorse( mf ) || '(不明)'
+	result.fm = LabelHorse( fm ) || '(不明)'
+	result.mm = LabelHorse( mm ) || '(不明)'
+	return result
+}
+
+const
+UmaDetail = ( clusters, horseKey ) => {
+	const
+	horse = LegacyByKey( clusters.oldmac.o_horse, String( Number( horseKey ) ) )
+	if ( !horse ) return null
+
+	const
+	key = String( Number( horse.object.HORSE ) )
+,	motherHansyoku = +horse.object.KettoJRA ? JVByNewestKey( clusters.jv.jv_um_uma, horse.object.KettoJRA )?.Ketto3Info_1_HansyokuNum : 0
+,	mother = motherHansyoku ? HorseByHansyoku( clusters, motherHansyoku ) : LegacyByKey( clusters.oldmac.o_horse, String( Number( horse.object.MOTHER ) ) )
+	return {
+		horse
+	,	family: UmaFamily( clusters, horse.object )
+	,	mother
+	,	relatives: LegacyScanByKey( clusters.oldmac.o_horse_relative, `${ key }|` ).sort( ( a, b ) => ( +a.object.KUBUN - +b.object.KUBUN ) || ( +a.object.PRIORITY - +b.object.PRIORITY ) )
+	,	noJra: LegacyScanByKey( clusters.oldmac.o_no_jra, `${ key }|` ).sort( ( a, b ) => +b.object.DATE - +a.object.DATE )
+	,	bestTimes: LegacyScanByKey( clusters.oldmac.o_best_time, `${ key }|` ).sort( ( a, b ) => ( +a.object.DISTANCE - +b.object.DISTANCE ) || String( a.object.TYPE ).localeCompare( String( b.object.TYPE ) ) )
+	,	rests: LegacyScanByKey( clusters.oldmac.o_rest, `${ key }|` ).sort( ( a, b ) => +b.object.DATE - +a.object.DATE )
+	,	bloods: LegacyScanByKey( clusters.oldmac.o_blood, `${ key }|` )
+	,	newHorse: LegacyByKey( clusters.oldmac.o_new_horse, key )
+	,	syogai: LegacyByKey( clusters.oldmac.o_syogai, key )
+	}
+}
+
+const
+UmaLookups = clusters => ( {
+	courses: LegacyScanByKey( clusters.oldmac.o_course, '' ).map( _ => _.object )
+,	comments: LegacyScanByKey( clusters.oldmac.o_comment, '' ).map( _ => _.object )
+} )
+
+const
+UmaNextHorse = clusters => {
+	let
+	max = 0
+	for ( const [ , line ] of clusters.oldmac.o_horse.scan() ) {
+		const
+		record = JSON.parse( line )
+		max = Math.max( max, Number( record[ 0 ] ) || 0 )
+	}
+	return max + 1
+}
+
 export const
 APIRoutes = clusters => ( {
 	'/api/race-day': async ( Q, S ) => {
@@ -453,6 +646,23 @@ APIRoutes = clusters => ( {
 			if ( !e.status ) throw e
 			Send( S, e.status, e.message )
 		}
+	}
+,	'/api/uma-search': async ( Q, S ) => {
+		const
+		q = QueryOf( Q )
+		SendJSONable( S, SearchUma( clusters, q.get( 'text' ) ?? '', q.get( 'type' ) ?? '前方一致', Number( q.get( 'limit' ) ?? 100 ) ) )
+	}
+,	'/api/uma-detail': async ( Q, S ) => {
+		const
+		q = QueryOf( Q )
+	,	detail = UmaDetail( clusters, q.get( 'horse' ) )
+		detail === null ? _404( S, 'No horse data.' ) : SendJSONable( S, detail )
+	}
+,	'/api/uma-lookups': async ( Q, S ) => {
+		SendJSONable( S, UmaLookups( clusters ) )
+	}
+,	'/api/uma-next-horse': async ( Q, S ) => {
+		SendJSONable( S, UmaNextHorse( clusters ) )
 	}
 ,
 	'/api/leading': async ( Q, S ) => {

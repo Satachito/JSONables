@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>UmaEditor</title>
+<link rel="stylesheet" href="/apps/shared/ui.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="appbar">
+	<h1>UmaEditor</h1>
+	<nav>
+		<a href="/apps/mastereditor/">MasterEditor</a>
+		<a href="/apps/raceresults/">RaceResults</a>
+		<a href="/apps/yuma/">YUMA</a>
+	</nav>
+</header>
+
+<main class="uma-editor">
+	<aside class="side">
+		<div class="search-row">
+			<input id="horseText" type="text" placeholder="馬名">
+			<select id="horseMatch">
+				<option>前方一致</option>
+				<option>後方一致</option>
+				<option>一致</option>
+				<option>含む</option>
+			</select>
+			<button id="horseSearch">検索</button>
+		</div>
+		<div class="button-row">
+			<button id="newHorse">新規</button>
+			<button id="saveHorse" disabled>馬保存</button>
+			<button id="deleteHorse" disabled>削除</button>
+		</div>
+		<div id="horseResults" class="results"></div>
+
+		<div class="section-title">参照馬</div>
+		<div class="search-row">
+			<input id="referenceText" type="text" placeholder="父母/近親に設定">
+			<select id="referenceMatch">
+				<option>前方一致</option>
+				<option>後方一致</option>
+				<option>一致</option>
+				<option>含む</option>
+			</select>
+			<button id="referenceSearch">検索</button>
+		</div>
+		<div id="referenceResults" class="results small"></div>
+		<div class="button-row">
+			<button id="setFather" disabled>父に設定</button>
+			<button id="setMother" disabled>母に設定</button>
+			<button id="addRelative" disabled>近親追加</button>
+		</div>
+
+		<div class="section-title">血統/補足</div>
+		<div id="family" class="family"></div>
+	</aside>
+
+	<section class="work">
+		<div class="workbar">
+			<div id="currentTitle" class="current-title">未選択</div>
+			<div id="status" class="status">馬名を検索してください</div>
+		</div>
+
+		<div class="tabs" id="tabs">
+			<button data-tab="horse" class="active">馬</button>
+			<button data-tab="relative">近親</button>
+			<button data-tab="noJra">非JRA</button>
+			<button data-tab="bestTime">持ち時計</button>
+			<button data-tab="property">プロパティ</button>
+		</div>
+
+		<section id="tab-horse" class="tab-panel active">
+			<div id="horseForm" class="field-grid"></div>
+		</section>
+
+		<section id="tab-relative" class="tab-panel">
+			<div class="table-toolbar">
+				<button data-add-table="relatives">追加</button>
+				<button data-save-table="relatives">保存</button>
+				<button data-delete-table="relatives">削除</button>
+			</div>
+			<div id="relatives"></div>
+		</section>
+
+		<section id="tab-noJra" class="tab-panel">
+			<div class="table-toolbar">
+				<button data-add-table="noJra">追加</button>
+				<button data-save-table="noJra">保存</button>
+				<button data-delete-table="noJra">削除</button>
+			</div>
+			<div id="noJra"></div>
+		</section>
+
+		<section id="tab-bestTime" class="tab-panel">
+			<div class="table-toolbar">
+				<button data-add-table="bestTimes">追加</button>
+				<button data-save-table="bestTimes">保存</button>
+				<button data-delete-table="bestTimes">削除</button>
+			</div>
+			<div id="bestTimes"></div>
+		</section>
+
+		<section id="tab-property" class="tab-panel">
+			<div class="property-grid">
+				<div>
+					<div class="section-title">障害</div>
+					<div id="syogaiForm" class="field-grid compact"></div>
+					<button id="saveSyogai">障害保存</button>
+				</div>
+				<div>
+					<div class="section-title">新馬メモ</div>
+					<div id="newHorseForm" class="field-grid compact"></div>
+					<button id="saveNewHorse">新馬保存</button>
+				</div>
+				<div>
+					<div class="section-title">休養</div>
+					<div class="table-toolbar">
+						<button data-add-table="rests">追加</button>
+						<button data-save-table="rests">保存</button>
+						<button data-delete-table="rests">削除</button>
+					</div>
+					<div id="rests"></div>
+				</div>
+				<div>
+					<div class="section-title">血統メモ</div>
+					<div class="table-toolbar">
+						<button data-add-table="bloods">追加</button>
+						<button data-save-table="bloods">保存</button>
+						<button data-delete-table="bloods">削除</button>
+					</div>
+					<div id="bloods"></div>
+				</div>
+			</div>
+		</section>
+	</section>
+</main>
+
+<script type="module" src="main.js"></script>
+</body>
+</html>
