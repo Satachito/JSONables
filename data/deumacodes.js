@@ -1,6 +1,5 @@
-//	Pure JV-Data code translators — port of the static methods of
-//	RaceResults/DeumaDrawer.cs. Used by both the browser drawers and the server
-//	(race import). Records are Full-JSON objects with trimmed string values.
+//	Pure JV-Data code translators used by the server race import.
+//	Records are Full-JSON objects with trimmed string values.
 
 export const
 AsStr = ( row, name ) => row?.[ name ] == null ? '' : String( row[ name ] )

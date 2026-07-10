@@ -1,5 +1,5 @@
-//	JSONables server: mounts every table found under data/ as /db/{cluster}/{table},
-//	serves the repo root statically (apps live at /apps/..., SAT browser libs at /SAT/...).
+//	JSONables server: mounts every table found under data/ as /db/{cluster}/{table}
+//	and serves the repo root statically.
 //
 //	Usage: node --max-old-space-size=4096 server/main.js  (or: npm start)
 
@@ -43,8 +43,7 @@ for ( const db of fs.existsSync( DATA ) ? fs.readdirSync( DATA ) : [] ) {
 		const
 		table = file.slice( 0, -'.meta.json'.length )
 
-		//	Tables with a prebuilt .idx (see tools/build-jv-index.js) are read from disk on
-		//	demand instead of held in memory.
+		//	Tables with a prebuilt .idx are read from disk on demand instead of held in memory.
 		;( clusters[ db ] ??= {} )[ table ] = fs.existsSync( path.join( dir, `${ table }.idx` ) )
 		?	await new IndexedCluster( dir, table ).load()
 		:	await new MemoryCluster( dir, table, { writable: WritableDB( db ) } ).load()

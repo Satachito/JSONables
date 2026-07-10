@@ -1,4 +1,5 @@
 _*
 node_modules/
-data/
+data/*
+!data/deumacodes.js
 .DS_Store

@@ -10,7 +10,7 @@ import {
 ,	_405
 } from '../SAT/Bullet.js'
 
-import { TD, PH, AsInt, AsStr } from '../apps/shared/deumacodes.js'
+import { TD, PH, AsInt, AsStr } from '../data/deumacodes.js'
 
 //	Zip a Legacy-style raw line into an object using the cluster's field list.
 const

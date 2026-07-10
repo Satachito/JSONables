@@ -190,7 +190,7 @@ MemoryCluster {
 }
 
 //	Read-only cluster over a large .jsonl whose records are read from disk on demand,
-//	via a prebuilt <table>.idx (see tools/build-jv-index.js): JSONL of [ key, offset, len ].
+//	via a prebuilt <table>.idx: JSONL of [ key, offset, len ].
 //	Optional secondary indexes: <table>.<name>.idx, JSONL of [ value, [ keys... ] ],
 //	exposed through lookup( name, value ) → keys.
 export class

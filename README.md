@@ -64,8 +64,8 @@ JSONables does not require application data to contain a primary key field.
 
 ```json
 {
-  "name": "Satoru",
-  "age": 67
+  "name": "example-project",
+  "active": true
 }
 ```
 
@@ -94,8 +94,8 @@ Example:
 
 ```text
 1001 -> {
-  "name": "Satoru",
-  "age": 67
+  "name": "example-project",
+  "active": true
 }
 ```
 
@@ -163,8 +163,8 @@ POST /users
 
 ```json
 {
-  "name": "Satoru",
-  "age": 67
+  "name": "example-project",
+  "active": true
 }
 ```
 
@@ -180,8 +180,8 @@ GET /users/1001
 
 ```json
 {
-  "name": "Satoru",
-  "age": 67
+  "name": "example-project",
+  "active": true
 }
 ```
 
@@ -198,15 +198,15 @@ The following are examples only.
 Useful when compatibility with traditional databases is desired.
 
 ```json
-["Satoru", 67, true]
+["example-project", true]
 ```
 
 ```json
-["name", "age", "active"]
+["name", "active"]
 ```
 
 ```json
-["String", "Numeric", "Boolean"]
+["String", "Boolean"]
 ```
 
 ### Full JSON Style
@@ -215,8 +215,8 @@ Useful when records may have completely different structures.
 
 ```json
 {
-  "name": "Satoru",
-  "age": 67
+  "name": "example-project",
+  "active": true
 }
 ```
 

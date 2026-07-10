@@ -1,5 +1,4 @@
-//	Browser client for JSONables clusters. Served statically; import from apps as
-//		import { Cluster, LegacyCluster } from '/jsonables/client.js'
+//	Browser client for JSONables clusters, served statically.
 
 const
 ThrowOnError = async $ => {
