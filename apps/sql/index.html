@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>JSONables SQL</title>
+<link rel="stylesheet" href="/apps/shared/ui.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="appbar">
+	<h1>JSONables SQL</h1>
+</header>
+
+<main class="sqlapp">
+	<aside class="schema">
+		<div class="schema-title">JSONables</div>
+		<div id="schema"></div>
+	</aside>
+
+	<section class="workspace">
+		<div class="editorbar">
+			<button id="run">実行</button>
+			<button id="clear">クリア</button>
+			<span id="status" class="status"></span>
+		</div>
+		<textarea id="sql" spellcheck="false">SELECT $id, $key, JOCKEY, NAME, SHORT_NAME, JRA
+FROM oldmac.o_jockey
+WHERE NAME CONTAINS '武'
+ORDER BY JOCKEY
+LIMIT 100;</textarea>
+		<div id="result" class="result"></div>
+	</section>
+</main>
+
+<script type="module" src="main.js"></script>
+</body>
+</html>
