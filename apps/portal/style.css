@@ -1,0 +1,367 @@
+body { background: #fff; }
+
+main {
+	height: calc(100vh - 84px);
+	overflow: hidden;
+	background: #fff;
+}
+
+.tab {
+	height: 100%;
+	display: flex;
+	flex-direction: column;
+	min-height: 0;
+}
+
+/*	display:flex が UA の [hidden]{display:none} に勝ってしまうため明示	*/
+.tab[hidden] { display: none; }
+
+/*	レース検索: 開催日サイド + 内容	*/
+.portal {
+	display: grid;
+	grid-template-columns: 260px minmax(0, 1fr);
+	height: 100%;
+}
+
+.side {
+	border-right: 1px solid #ccc;
+	background: #f7f8fa;
+	display: grid;
+	grid-template-rows: auto minmax(0, 1fr);
+	min-height: 0;
+}
+
+.controls {
+	display: flex;
+	gap: 6px;
+	padding: 8px;
+	border-bottom: 1px solid #e0e0e0;
+}
+
+.controls select {
+	padding: 3px;
+	border: 1px solid #bbb;
+	border-radius: 3px;
+}
+
+.controls button {
+	padding: 3px 8px;
+	cursor: pointer;
+}
+
+.calendar {
+	overflow: auto;
+	padding: 6px;
+}
+
+.dayrow {
+	display: flex;
+	flex-direction: column;
+	width: 100%;
+	border: 1px solid #dde3ea;
+	background: #fff;
+	border-radius: 4px;
+	padding: 5px 8px;
+	margin-bottom: 4px;
+	cursor: pointer;
+	text-align: left;
+}
+
+.dayrow span {
+	color: #778;
+	font-size: 11px;
+}
+
+.dayrow:hover { background: #eef3f9; }
+.dayrow.active { background: #2b3a4a; color: #fff; }
+.dayrow.active span { color: #cfe0f0; }
+
+.content {
+	display: grid;
+	grid-template-rows: minmax(0, 1fr);
+	min-height: 0;
+}
+
+/*	レース検索: 年間全レースの details/summary ツリー	*/
+.racetree {
+	overflow: auto;
+	padding: 6px 8px;
+}
+
+.racetree summary {
+	cursor: pointer;
+	padding: 4px 6px;
+	border-radius: 3px;
+	user-select: none;
+}
+
+.racetree summary .cnt {
+	color: #889;
+	font-size: 11px;
+	margin-left: 6px;
+}
+
+details.venue > summary { font-weight: bold; color: #2b3a4a; }
+details.venue[open] > summary { background: #eef3f9; }
+details.venue { margin-bottom: 2px; }
+
+details.day { margin: 2px 0 2px 10px; }
+details.day > summary { color: #445; }
+
+.racelink {
+	display: block;
+	width: 100%;
+	border: 0;
+	background: transparent;
+	text-align: left;
+	padding: 3px 6px 3px 22px;
+	cursor: pointer;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	font-size: 12px;
+}
+
+.racelink b { color: #2b6cb0; margin-right: 4px; }
+.racelink em { color: #b8860b; font-style: normal; font-weight: bold; margin-left: 4px; }
+.racelink span { color: #99a; margin-left: 6px; font-size: 11px; }
+.racelink:hover { background: #eef3f9; }
+.racelink.active { background: #2b3a4a; color: #fff; }
+.racelink.active b, .racelink.active span, .racelink.active em { color: #cfe0f0; }
+
+.racechips {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	padding: 10px 12px;
+	border-bottom: 1px solid #e0e0e0;
+	overflow: auto;
+	max-height: 40%;
+}
+
+.chip {
+	border: 1px solid #cdd5de;
+	background: #fff;
+	border-radius: 4px;
+	padding: 4px 10px;
+	cursor: pointer;
+	text-align: left;
+	white-space: nowrap;
+}
+
+.chip b { color: #2b6cb0; margin-right: 4px; }
+.chip span { color: #889; margin-left: 6px; font-size: 11px; }
+.chip:hover { background: #eef3f9; }
+.chip.active { background: #2b3a4a; color: #fff; }
+.chip.active b, .chip.active span { color: #cfe0f0; }
+
+.result {
+	overflow: auto;
+	padding: 12px;
+	flex: 1;
+	min-height: 0;
+}
+
+.racehead { margin-bottom: 10px; }
+.racehead h2 { margin: 0 0 4px; font-size: 18px; }
+.racehead .meta { color: #556; font-size: 12px; }
+
+.result-table td:nth-child(4) { text-align: left; }
+.result-table td { text-align: right; }
+.result-table td:nth-child(7), .result-table td:nth-child(13) { text-align: left; }
+.bamei { font-weight: bold; }
+
+tr.clickable { cursor: pointer; }
+tr.clickable:hover td { background: #eef3f9; }
+
+.period {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	color: #556;
+	font-size: 12px;
+}
+
+.rank-date {
+	padding: 3px;
+	border: 1px solid #bbb;
+	border-radius: 3px;
+}
+
+.rank-table td { text-align: right; }
+.rank-table td:nth-child(2) { text-align: left; }
+
+/*	競走成績: 数値は右、名称系は左	*/
+.seiseki-table td { text-align: right; }
+.seiseki-table td:nth-child(1),
+.seiseki-table td:nth-child(2),
+.seiseki-table td:nth-child(3),
+.seiseki-table td:nth-child(5),
+.seiseki-table td:nth-child(11),
+.seiseki-table td:nth-child(12) { text-align: left; }
+
+.backbar {
+	padding: 6px 12px 0;
+}
+
+.backbar button {
+	padding: 4px 12px;
+	border: 1px solid #cdd5de;
+	background: #fff;
+	border-radius: 4px;
+	cursor: pointer;
+	color: #2b6cb0;
+}
+
+.backbar button:hover { background: #eef3f9; }
+
+.entityhead {
+	margin-bottom: 12px;
+	padding-bottom: 10px;
+	border-bottom: 2px solid #2b3a4a;
+}
+
+.entityhead h2 {
+	margin: 0 0 6px;
+	font-size: 20px;
+}
+
+.entityhead h2 small {
+	font-size: 13px;
+	color: #667;
+	font-weight: normal;
+	margin-left: 6px;
+}
+
+.entityhead .pairs {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px 16px;
+	margin-bottom: 8px;
+}
+
+.entityhead .pair {
+	font-size: 12px;
+}
+
+.entityhead .pair .k {
+	color: #889;
+	margin-right: 6px;
+}
+
+.entityhead .pair .v {
+	font-weight: bold;
+}
+
+.family {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 20px;
+	margin-bottom: 14px;
+	align-items: flex-start;
+}
+
+.famcol { min-width: 0; }
+
+.famtitle {
+	font-size: 13px;
+	font-weight: bold;
+	color: #2b3a4a;
+	margin: 4px 0 6px;
+	padding-left: 6px;
+	border-left: 4px solid #2b6cb0;
+}
+
+table.pedigree {
+	border-collapse: collapse;
+	table-layout: fixed;
+}
+
+table.pedigree td {
+	border: 1px solid #d5dbe2;
+	padding: 3px 8px;
+	font-size: 12px;
+	white-space: nowrap;
+	width: 130px;
+}
+
+table.pedigree td.sire { background: #eef4fb; }
+table.pedigree td.dam { background: #fbeef2; }
+
+.fam-table { margin-bottom: 12px; }
+
+.entityhead .seiseki {
+	font-size: 13px;
+	color: #2b3a4a;
+	font-weight: bold;
+	background: #eef3f9;
+	display: inline-block;
+	padding: 4px 10px;
+	border-radius: 4px;
+}
+
+/*	出走表	*/
+.side-title { font-weight: bold; color: #2b3a4a; }
+
+.koryu {
+	display: inline-block;
+	background: #7a5cc0;
+	color: #fff;
+	font-size: 10px;
+	font-style: normal;
+	border-radius: 3px;
+	padding: 0 5px;
+	margin-left: 6px;
+	vertical-align: middle;
+}
+
+.card-table td { vertical-align: middle; }
+.card-table td.umaban { text-align: right; font-weight: bold; }
+.card-table td:nth-child(4), .card-table td:nth-child(5) { text-align: center; }
+
+.card-table td.rec-cell { text-align: center; white-space: nowrap; }
+.card-table .rec { font-family: Menlo, Consolas, monospace; font-variant-numeric: tabular-nums; font-weight: bold; color: #2b3a4a; }
+.card-table .rec-new { color: #999; font-size: 11px; }
+
+.card-table td.horse-link { cursor: pointer; color: #1a4e8a; }
+.card-table td.horse-link:hover { text-decoration: underline; }
+
+tr.card-horse.has-comment td { border-bottom: 0; }
+
+tr.comment-row td {
+	background: #fbf7e9;
+	color: #5a4a2a;
+	white-space: normal;
+	font-size: 12px;
+	padding: 4px 8px 6px;
+}
+
+.cbadge {
+	display: inline-block;
+	background: #b8860b;
+	color: #fff;
+	font-size: 11px;
+	font-weight: bold;
+	border-radius: 3px;
+	padding: 1px 6px;
+	margin-right: 8px;
+}
+
+/*	枠番の色（JRA配色）	*/
+.waku1 { background: #fff; color: #222; }
+.waku2 { background: #222; color: #fff; }
+.waku3 { background: #e2453b; color: #fff; }
+.waku4 { background: #2b6cb0; color: #fff; }
+.waku5 { background: #f2c200; color: #222; }
+.waku6 { background: #3a9b52; color: #fff; }
+.waku7 { background: #f08a24; color: #fff; }
+.waku8 { background: #e46aa0; color: #fff; }
+.card-table td[class^="waku"] { text-align: center; font-weight: bold; }
+
+.empty { color: #888; padding: 12px 0; }
+.error { color: #b00; white-space: pre-wrap; }
+
+@media (max-width: 720px) {
+	.portal { grid-template-columns: 1fr; grid-template-rows: 200px minmax(0, 1fr); }
+	.side { border-right: 0; border-bottom: 1px solid #ccc; }
+}

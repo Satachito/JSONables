@@ -10,7 +10,7 @@ import {
 ,	_405
 } from '../SAT/Bullet.js'
 
-import { TD, PH, AsInt, AsStr } from '../data/deumacodes.js'
+import { TD, TDH, PH, AsInt, AsStr, Course, JyoCD2StrJPN, BabaT, BabaD, KeiroCDString, JyokenInfo_SyubetuCD_Hondai, JyokenInfo_JyokenCD_4 } from '../data/deumacodes.js'
 
 //	Zip a Legacy-style raw line into an object using the cluster's field list.
 const
@@ -108,6 +108,570 @@ Leading = async ( clusters, year ) => {
 	}
 
 	return ranking
+}
+
+///////////////////////////////	検索ポータル
+
+//	One year of a track's meeting days, from RA keys (year|monthday|jyo|kaiji|nichiji|racenum)
+//	— distinct (monthday, kaiji, nichiji) with race counts, newest first.
+const
+Calendar = ( clusters, year, jyo ) => {
+	const
+	days = new Map()
+	for ( const [ key ] of clusters.jv.jv_ra_race.scan( `${ year }|` ) ) {
+		const
+		[ , monthday, jyoCD, kaiji, nichiji ] = key.split( '|' )
+		if ( jyoCD !== jyo ) continue
+		const
+		k = `${ monthday }|${ kaiji }|${ nichiji }`
+		;( days.get( k ) ?? days.set( k, { monthday, kaiji, nichiji, count: 0 } ).get( k ) ).count++
+	}
+	return [ ...days.values() ].sort( ( a, b ) => b.monthday.localeCompare( a.monthday ) )
+}
+
+//	その年の中央全レースを 場→開催日→レース の入れ子で返す（details/summary ツリー用）。
+const
+YearRaces = ( clusters, year ) => {
+	const
+	Central = jyo => Number( jyo ) >= 1 && Number( jyo ) <= 10
+	,	venues = new Map()	//	jyo → Map( `${kaiji}|${nichiji}|${monthday}` → { monthday, kaiji, nichiji, races[] } )
+	for ( const [ key, line ] of clusters.jv.jv_ra_race.scan( `${ year }|` ) ) {
+		const
+		[ , monthday, jyo, kaiji, nichiji, racenum ] = key.split( '|' )
+		if ( !Central( jyo ) ) continue
+		const
+		r = JSON.parse( line )
+		,	v = venues.get( jyo ) ?? venues.set( jyo, new Map() ).get( jyo )
+		,	dk = `${ kaiji }|${ nichiji }|${ monthday }`
+		,	day = v.get( dk ) ?? v.set( dk, { monthday, kaiji, nichiji, races: [] } ).get( dk )
+		day.races.push( { racenum, title: RaceName( r ), grade: String( r.GradeCD ?? '' ), td: TDH( r ), distance: AsInt( r, 'Kyori' ) } )
+	}
+	const
+	out = []
+	for ( const [ jyo, days ] of [ ...venues.entries() ].sort( ( a, b ) => a[ 0 ].localeCompare( b[ 0 ] ) ) ) {
+		const
+		dayList = [ ...days.values() ].sort( ( a, b ) => b.monthday.localeCompare( a.monthday ) )
+		for ( const d of dayList ) d.races.sort( ( a, b ) => Number( a.racenum ) - Number( b.racenum ) )
+		out.push( { jyo, jyoName: JyoCD2StrJPN( jyo ) || jyo, days: dayList } )
+	}
+	return { year: String( year ), venues: out }
+}
+
+//	One season's leaderboard, aggregated from confirmed SE runners (head_DataKubun 7)
+//	of the given year. kind picks the grouping key + display name + sort metric:
+//		jockey/trainer → 勝利数順（リーディング）, owner/horse → 本賞金順.
+const
+RANKING_SPEC = {
+	jockey	: { code: 'KisyuCode',		name: 'KisyuRyakusyo',	metric: 'wins'  }
+,	trainer	: { code: 'ChokyosiCode',	name: 'ChokyosiRyakusyo',	metric: 'wins'  }
+,	owner	: { code: 'BanusiCode',		name: 'BanusiName',		metric: 'prize' }
+,	horse	: { code: 'KettoNum',		name: 'Bamei',			metric: 'prize' }
+}
+
+//	from/to は YYYYMMDD（to は省略可＝現在まで）。SEキー(YYYY|MMDD|…)は日付昇順に
+//	並ぶので、開始年〜終了年を年プレフィックスで走査し、各行の日付を範囲で絞る。
+const
+Ranking = ( clusters, from, to, kind ) => {
+	const
+	spec = RANKING_SPEC[ kind ]
+	if ( !spec ) throw Object.assign( new Error( `Unknown ranking kind: ${ kind }` ), { status: 400 } )
+	if ( !/^\d{8}$/.test( String( from ) ) ) throw Object.assign( new Error( 'from must be YYYYMMDD' ), { status: 400 } )
+	if ( to && !/^\d{8}$/.test( String( to ) ) ) throw Object.assign( new Error( 'to must be YYYYMMDD' ), { status: 400 } )
+
+	const
+	fromNum		= Number( from )
+	,	toNum		= to ? Number( to ) : Infinity
+	,	startYear	= Number( from.slice( 0, 4 ) )
+	,	endYear		= to ? Number( to.slice( 0, 4 ) ) : new Date().getFullYear()
+
+	const
+	map = new Map()	//	code → { code, name, rides, w1, w2, w3, prize }
+	for ( let year = startYear; year <= endYear; year++ ) {
+		for ( const [ , line ] of clusters.jv.jv_se_race_uma.scan( `${ year }|` ) ) {
+			const
+			r = JSON.parse( line )
+			if ( r.head_DataKubun !== '7' ) continue
+			const
+			dateNum = Number( `${ r.id_Year }${ r.id_MonthDay }` )
+			if ( dateNum < fromNum || dateNum > toNum ) continue
+			const
+			code = String( r[ spec.code ] ?? '' ).trim()
+			if ( !code ) continue
+			const
+			entry = map.get( code ) ?? map.set( code, { code, name: '', rides: 0, w1: 0, w2: 0, w3: 0, prize: 0 } ).get( code )
+			const
+			name = String( r[ spec.name ] ?? '' ).trim()
+			if ( name ) entry.name = name
+			entry.rides++
+			const
+			jyuni = Number( r.KakuteiJyuni )
+			if ( jyuni === 1 ) entry.w1++
+			else if ( jyuni === 2 ) entry.w2++
+			else if ( jyuni === 3 ) entry.w3++
+			entry.prize += Number( r.Honsyokin ) || 0	//	百円単位
+		}
+	}
+
+	const
+	rows = [ ...map.values() ].sort( spec.metric === 'prize'
+		?	( a, b ) => ( b.prize - a.prize ) || ( b.w1 - a.w1 )
+		:	( a, b ) => ( b.w1 - a.w1 ) || ( b.w2 - a.w2 ) || ( b.w3 - a.w3 ) || ( b.prize - a.prize )
+	)
+	return rows.slice( 0, 100 ).map( ( e, i ) => ( { rank: i + 1, ...e } ) )
+}
+
+///////////////////////////////	詳細（基本情報＋競走成績）
+
+const
+RESULT_SPEC = {
+	jockey	: { codeField: 'KisyuCode',		master: 'jv_ks_kisyu'		}
+,	trainer	: { codeField: 'ChokyosiCode',	master: 'jv_ch_chokyosi'	}
+,	owner	: { codeField: 'BanusiCode',		master: 'jv_bn_banusi'		}
+,	horse	: { codeField: 'KettoNum',		master: 'jv_um_uma'		}
+}
+
+const
+MAX_RESULT_ROWS = 300
+
+//	レース名: 本題→略称→条件名→（条件戦は 種別＋クラスを合成）
+const
+RaceName = race => {
+	const
+	hondai = String( race.RaceInfo_Hondai ?? '' ).trim()
+	if ( hondai ) return hondai
+	const
+	ryaku = String( race.RaceInfo_Ryakusyo6 ?? '' ).trim()
+	if ( ryaku ) return ryaku
+	const
+	jyoken = String( race.JyokenName ?? '' ).trim()
+	if ( jyoken ) return jyoken
+	return [
+		JyokenInfo_SyubetuCD_Hondai( AsInt( race, 'JyokenInfo_SyubetuCD' ) )
+	,	JyokenInfo_JyokenCD_4( AsInt( race, 'JyokenInfo_JyokenCD_4' ) )
+	].filter( Boolean ).join( ' ' ).trim()
+}
+
+//	1レースの最新RAレコード（フルキー一致）
+const
+RaceByKey = ( clusters, key ) => {
+	let
+	best = null
+	for ( const [ , line ] of clusters.jv.jv_ra_race.scan( key ) ) {
+		const
+		r = JSON.parse( line )
+		if ( [ r.id_Year, r.id_MonthDay, r.id_JyoCD, r.id_Kaiji, r.id_Nichiji, r.id_RaceNum ].join( '|' ) !== key ) continue
+		if ( best === null || String( r.head_MakeDate ?? '' ) > String( best.head_MakeDate ?? '' ) ) best = r
+	}
+	return best
+}
+
+//	SE行(出走馬) を RA(レース) で肉付けした競走成績1行
+const
+EnrichRace = ( clusters, h, cache ) => {
+	const
+	key = [ h.id_Year, h.id_MonthDay, h.id_JyoCD, h.id_Kaiji, h.id_Nichiji, h.id_RaceNum ].join( '|' )
+	let
+	race = cache.get( key )
+	if ( race === undefined ) { race = RaceByKey( clusters, key ) ; cache.set( key, race ) }
+	const
+	td = race ? TDH( race ) : ''
+	return {
+		year: h.id_Year, monthday: h.id_MonthDay
+	,	jyo: h.id_JyoCD, jyoName: JyoCD2StrJPN( h.id_JyoCD ) || h.id_JyoCD
+	,	kaiji: h.id_Kaiji, nichiji: h.id_Nichiji, racenum: h.id_RaceNum
+	,	raceTitle: race ? RaceName( race ) : ''
+	,	grade: race ? String( race.GradeCD ?? '' ) : ''
+	,	td, distance: race ? AsInt( race, 'Kyori' ) : 0
+	,	baba: race ? ( td === 'ダ' ? BabaD( race ) : BabaT( race ) ) : ''
+	,	fieldSize: race ? AsInt( race, 'SyussoTosu' ) : 0
+	,	wakuban: h.Wakuban, umaban: h.Umaban, ninki: h.Ninki
+	,	chaku: h.KakuteiJyuni, ijyo: h.IJyoCD
+	,	bamei: String( h.Bamei ?? '' ).trim(), jockey: String( h.KisyuRyakusyo ?? '' ).trim()
+	,	sexBarei: `${ h.SexCD }${ h.Barei }`, futan: h.Futan
+	,	time: h.Time, last3f: h.HaronTimeL3
+	,	baTaijyu: h.BaTaijyu, zogenFugo: h.ZogenFugo, zogenSa: h.ZogenSa
+	}
+}
+
+//	対象(騎手/調教師/馬主/馬)の SE行を集める。馬は ketto 索引で全成績、
+//	人は期間内を再走査。新しい順、上限あり。
+const
+EntitySE = ( clusters, kind, code, from, to ) => {
+	const
+	se = clusters.jv.jv_se_race_uma
+	,	spec = RESULT_SPEC[ kind ]
+	,	rows = []
+	if ( kind === 'horse' ) {
+		for ( const key of se.lookup( 'ketto', String( code ) ) ) {
+			const
+			h = JSON.parse( se.get( key ) )
+			if ( [ '7', 'A', 'B' ].includes( h.head_DataKubun ) ) rows.push( h )
+		}
+	} else {
+		const
+		fromNum		= Number( from )
+		,	toNum		= to ? Number( to ) : Infinity
+		,	startYear	= Number( from.slice( 0, 4 ) )
+		,	endYear		= to ? Number( to.slice( 0, 4 ) ) : new Date().getFullYear()
+		for ( let year = startYear; year <= endYear; year++ ) {
+			for ( const [ , line ] of se.scan( `${ year }|` ) ) {
+				const
+				h = JSON.parse( line )
+				if ( h.head_DataKubun !== '7' ) continue
+				const
+				dateNum = Number( `${ h.id_Year }${ h.id_MonthDay }` )
+				if ( dateNum < fromNum || dateNum > toNum ) continue
+				if ( String( h[ spec.codeField ] ?? '' ).trim() !== String( code ) ) continue
+				rows.push( h )
+			}
+		}
+	}
+	rows.sort( ( a, b ) => Number( `${ b.id_Year }${ b.id_MonthDay }` ) - Number( `${ a.id_Year }${ a.id_MonthDay }` ) )
+	return rows
+}
+
+const
+SexCDStr = cd => ( { '1': '牡', '2': '牝', '3': 'セ' }[ cd ] ?? '' )
+
+const
+TozaiStr = cd => ( { '1': '美浦', '2': '栗東', '3': '地方', '4': '海外' }[ cd ] ?? '' )
+
+const
+YmdStr = ( y, m, d ) => y ? `${ y }/${ m }/${ d }` : ''
+
+//	集計成績（[1-2-3-着外]・勝率・本賞金）
+const
+Summary = rows => {
+	const
+	s = { rides: rows.length, w1: 0, w2: 0, w3: 0, prize: 0 }
+	for ( const h of rows ) {
+		const
+		j = Number( h.KakuteiJyuni )
+		if ( j === 1 ) s.w1++
+		else if ( j === 2 ) s.w2++
+		else if ( j === 3 ) s.w3++
+		s.prize += Number( h.Honsyokin ) || 0
+	}
+	return s
+}
+
+//	kind別 基本情報（マスタ＋集計）を表示用の pairs にまとめる
+const
+BuildInfo = ( clusters, kind, code, master, summary ) => {
+	const
+	m = master ?? {}
+	if ( kind === 'horse' ) return {
+		title		: String( m.Bamei ?? '' ).trim()
+	,	subtitle	: [ SexCDStr( m.SexCD ), KeiroCDString( m.KeiroCD ) ].filter( Boolean ).join( '・' )
+	,	pairs		: [
+			[ '生年月日', YmdStr( m.BirthDate_Year, m.BirthDate_Month, m.BirthDate_Day ) ]
+		,	[ '父', String( m.Ketto3Info_0_Bamei ?? '' ).trim() ]
+		,	[ '母（母父）', `${ String( m.Ketto3Info_1_Bamei ?? '' ).trim() }（${ String( m.Ketto3Info_4_Bamei ?? '' ).trim() }）` ]
+		,	[ '調教師', String( m.ChokyosiRyakusyo ?? '' ).trim() ]
+		,	[ '馬主', String( m.BanusiName ?? '' ).trim() ]
+		,	[ '生産者', String( m.BreederName ?? '' ).trim() ]
+		,	[ '産地', String( m.SanchiName ?? '' ).trim() ]
+		]
+	}
+	if ( kind === 'jockey' ) return {
+		title		: String( m.KisyuName ?? '' ).trim()
+	,	subtitle	: TozaiStr( m.TozaiCD )
+	,	pairs		: [
+			[ 'カナ', String( m.KisyuNameKana ?? '' ).trim() ]
+		,	[ '生年月日', YmdStr( m.BirthDate_Year, m.BirthDate_Month, m.BirthDate_Day ) ]
+		,	[ '所属', TozaiStr( m.TozaiCD ) ]
+		,	[ '所属厩舎', String( m.ChokyosiRyakusyo ?? '' ).trim() ]
+		]
+	}
+	if ( kind === 'trainer' ) return {
+		title		: String( m.ChokyosiName ?? '' ).trim()
+	,	subtitle	: TozaiStr( m.TozaiCD )
+	,	pairs		: [
+			[ 'カナ', String( m.ChokyosiNameKana ?? '' ).trim() ]
+		,	[ '生年月日', YmdStr( m.BirthDate_Year, m.BirthDate_Month, m.BirthDate_Day ) ]
+		,	[ '所属', TozaiStr( m.TozaiCD ) ]
+		]
+	}
+	return {	//	owner
+		title		: String( m.BanusiName ?? '' ).trim()
+	,	subtitle	: ''
+	,	pairs		: [
+			[ 'カナ', String( m.BanusiNameKana ?? '' ).trim() ]
+		,	[ '法人格付き', String( m.BanusiName_Co ?? '' ).trim() ]
+		]
+	}
+}
+
+//	oldmac o_horse を一度だけ走査して索引化（KettoJRA→馬 / HORSE→馬 / MOTHER→[馬]）。
+//	o_horse はメモリ常駐なので初回のみ構築しキャッシュ。
+let
+_oldmacHorseIndex = null
+
+const
+OldmacHorseIndex = clusters => {
+	if ( _oldmacHorseIndex ) return _oldmacHorseIndex
+	const
+	oh = clusters.oldmac.o_horse
+	,	f = oh.meta().fields
+	,	iHORSE = f.indexOf( 'HORSE' ), iNAME = f.indexOf( 'NAME' ), iBIRTH = f.indexOf( 'BIRTHDAY' )
+	,	iFATHER = f.indexOf( 'FATHER' ), iMOTHER = f.indexOf( 'MOTHER' ), iSEX = f.indexOf( 'SEX' ), iKetto = f.indexOf( 'KettoJRA' )
+	,	byId = new Map(), byKetto = new Map(), byMother = new Map()
+	for ( const [ , line ] of oh.scan() ) {
+		const
+		r = JSON.parse( line )
+		,	o = { HORSE: r[ iHORSE ], NAME: r[ iNAME ], BIRTHDAY: r[ iBIRTH ], FATHER: r[ iFATHER ], MOTHER: r[ iMOTHER ], SEX: r[ iSEX ], KettoJRA: r[ iKetto ] }
+		byId.set( String( o.HORSE ), o )
+		if ( o.KettoJRA ) byKetto.set( String( o.KettoJRA ), o )
+		if ( +o.MOTHER ) ( byMother.get( String( o.MOTHER ) ) ?? byMother.set( String( o.MOTHER ), [] ).get( String( o.MOTHER ) ) ).push( o )
+	}
+	return _oldmacHorseIndex = { byId, byKetto, byMother }
+}
+
+const
+SexShort = cd => ( { '1': '牡', '2': '牝', '3': 'セ' }[ String( cd ) ] ?? '' )
+
+//	3代血統(14頭, jv) ＋ 全兄弟(母同じ, oldmac) ＋ 近親(curated o_horse_relative)
+const
+HorseFamily = ( clusters, ketto, um ) => {
+	const
+	pedigree = Array.from( { length: 14 }, ( _, i ) => String( um?.[ `Ketto3Info_${ i }_Bamei` ] ?? '' ).trim() )
+	,	idx = OldmacHorseIndex( clusters )
+	,	self = idx.byKetto.get( String( ketto ) )
+
+	//	um マスタ未収録の新しい馬は、父母だけ oldmac から補完
+	if ( !pedigree[ 0 ] && self ) {
+		pedigree[ 0 ] = String( idx.byId.get( String( self.FATHER ) )?.NAME ?? '' ).trim()
+		pedigree[ 1 ] = String( idx.byId.get( String( self.MOTHER ) )?.NAME ?? '' ).trim()
+	}
+
+	const
+	siblings = self && +self.MOTHER
+		? ( idx.byMother.get( String( self.MOTHER ) ) ?? [] )
+			.filter( h => String( h.HORSE ) !== String( self.HORSE ) )
+			.sort( ( a, b ) => Number( a.BIRTHDAY ) - Number( b.BIRTHDAY ) )
+			.map( h => ( {
+				name: h.NAME, birth: String( h.BIRTHDAY ).slice( 0, 4 ), sex: SexShort( h.SEX )
+			,	sire: idx.byId.get( String( h.FATHER ) )?.NAME ?? ''
+			,	ketto: h.KettoJRA ? String( h.KettoJRA ) : ''
+			} ) )
+		: []
+
+	const
+	relatives = self
+		? LegacyScanByKey( clusters.oldmac.o_horse_relative, `${ self.HORSE }|` )
+			.map( _ => _.object )
+			.sort( ( a, b ) => ( +a.KUBUN - +b.KUBUN ) || ( +a.PRIORITY - +b.PRIORITY ) )
+			.map( r => {
+				const
+				h = idx.byId.get( String( +r.RELATIVE ) )
+				return { name: h?.NAME ?? '', kubun: +r.KUBUN, comment: String( r.COMMENT ?? '' ).trim(), ketto: h?.KettoJRA ? String( h.KettoJRA ) : '' }
+			} )
+			.filter( r => r.name )
+		: []
+
+	return { pedigree, siblings, relatives }
+}
+
+const
+EntityResults = ( clusters, kind, code, from, to ) => {
+	const
+	spec = RESULT_SPEC[ kind ]
+	if ( !spec ) throw Object.assign( new Error( `Unknown kind: ${ kind }` ), { status: 400 } )
+	if ( !code ) throw Object.assign( new Error( 'code is required' ), { status: 400 } )
+
+	const
+	all = EntitySE( clusters, kind, code, from, to )
+	,	summary = Summary( all )
+	,	cache = new Map()
+	,	races = all.slice( 0, MAX_RESULT_ROWS ).map( h => EnrichRace( clusters, h, cache ) )
+
+	const
+	masterLine = clusters.jv[ spec.master ].getByKey( String( code ) )
+	,	master = masterLine ? JSON.parse( masterLine ) : null
+	,	info = BuildInfo( clusters, kind, code, master, summary )
+
+	//	馬: um マスタ未収録(未出走の新しい馬等)なら名前を oldmac から補完
+	if ( kind === 'horse' && !info.title ) {
+		const
+		oh = OldmacHorseIndex( clusters ).byKetto.get( String( code ) )
+		if ( oh ) info.title = String( oh.NAME ?? '' ).trim()
+	}
+
+	return {
+		kind, code
+	,	info
+	,	summary
+	,	capped: all.length > MAX_RESULT_ROWS
+	,	races
+	,	...( kind === 'horse' ? HorseFamily( clusters, code, master ) : {} )
+	}
+}
+
+//	馬名検索（馬一覧・KettoNum付き）— um.bamei 索引
+const
+SearchHorses = ( clusters, text, type ) => {
+	const
+	um = clusters.jv.jv_um_uma
+	,	bamei = um.secondary?.bamei
+	if ( !bamei ) throw Object.assign( new Error( 'bamei index not built' ), { status: 500 } )
+	const
+	needle = String( text ?? '' )
+	,	Match = type === '前方一致'	? n => n.startsWith( needle )
+		:	type === '後方一致'		? n => n.endsWith( needle )
+		:	type === '含む'			? n => n.includes( needle )
+		:	n => n === needle
+	,	out = []
+	for ( const [ name, kettos ] of bamei ) {
+		if ( !needle || !Match( name ) ) continue
+		for ( const ketto of kettos ) {
+			const
+			line = um.get( String( ketto ) )
+			if ( !line ) continue
+			const
+			u = JSON.parse( line )
+			out.push( {
+				ketto: String( ketto )
+			,	bamei: String( u.Bamei ?? '' ).trim()
+			,	sex: SexCDStr( u.SexCD )
+			,	birth: u.BirthDate_Year ? String( u.BirthDate_Year ) : ''
+			,	sire: String( u.Ketto3Info_0_Bamei ?? '' ).trim()
+			,	dam: String( u.Ketto3Info_1_Bamei ?? '' ).trim()
+			} )
+		}
+		if ( out.length > 300 ) break
+	}
+	return out.sort( ( a, b ) => ( Number( b.birth ) - Number( a.birth ) ) || a.bamei.localeCompare( b.bamei ) )
+}
+
+///////////////////////////////	出走表（レースカード）
+
+//	データにある最新開催週 = 最新年の直近3開催日 の (日付,場,回,日) 一覧
+const
+LatestWeek = clusters => {
+	const
+	ra = clusters.jv.jv_ra_race
+	let
+	year = new Date().getFullYear()
+	,	dates = []
+	const
+	Central = jyo => Number( jyo ) >= 1 && Number( jyo ) <= 10	//	中央10場
+	//	直近3開催日は中央基準で決める
+	for ( ; year >= 1986; year-- ) {
+		const
+		set = new Set()
+		for ( const [ key ] of ra.scan( `${ year }|` ) ) { const p = key.split( '|' ); if ( Central( p[ 2 ] ) ) set.add( p[ 1 ] ) }
+		if ( set.size ) { dates = [ ...set ].sort(); break }
+	}
+	if ( !dates.length ) return { year: null, days: [] }
+
+	//	中央の直近3日 + その週内(最古中央日以降)の地方交流戦も含める
+	const
+	lastDates = new Set( dates.slice( -3 ) )
+	,	earliest = dates.slice( -3 )[ 0 ]
+	,	days = new Map()
+	for ( const [ key ] of ra.scan( `${ year }|` ) ) {
+		const
+		[ , monthday, jyo, kaiji, nichiji ] = key.split( '|' )
+		,	nar = !Central( jyo )
+		if ( nar ? monthday < earliest : !lastDates.has( monthday ) ) continue
+		const
+		k = `${ monthday }|${ jyo }|${ kaiji }|${ nichiji }`
+		;( days.get( k ) ?? days.set( k, { year: String( year ), monthday, jyo, jyoName: JyoCD2StrJPN( jyo ) || jyo, nar, kaiji, nichiji, count: 0 } ).get( k ) ).count++
+	}
+	return { year: String( year ), days: [ ...days.values() ].sort( ( a, b ) => b.monthday.localeCompare( a.monthday ) || Number( a.nar ) - Number( b.nar ) || a.jyo.localeCompare( b.jyo ) ) }
+}
+
+//	このレース日より前の確定成績から、出走数と着別度数 [1,2,3,4,5,着外] を集計。
+//	1走だけの馬はその1戦の着順(chaku)/異常区分(ijyo)も返す。
+const
+CareerRecord = ( se, ketto, raceDate ) => {
+	const
+	rec = [ 0, 0, 0, 0, 0, 0 ]
+	let
+	starts = 0
+	,	soleChaku = 0
+	,	soleIjyo = '0'
+	for ( const key of se.lookup( 'ketto', String( ketto ) ) ) {
+		const
+		p = key.split( '|' )
+		if ( Number( `${ p[ 0 ] }${ p[ 1 ] }` ) >= raceDate ) continue
+		const
+		line = se.get( key )
+		if ( !line ) continue
+		const
+		h = JSON.parse( line )
+		if ( ![ '7', 'A', 'B' ].includes( h.head_DataKubun ) ) continue
+		starts++
+		const
+		j = Number( h.KakuteiJyuni )
+		rec[ j >= 1 && j <= 5 ? j - 1 : 5 ]++
+		soleChaku = j					//	starts===1 ならこれが唯一の1戦の着順
+		soleIjyo = String( h.IJyoCD ?? '0' )
+	}
+	return { starts, rec, chaku: starts === 1 ? soleChaku : 0, ijyo: starts === 1 ? soleIjyo : '0' }
+}
+
+//	未出走(0走)=CONTENT1(デビュー前評価), 1走=CONTENT2(初戦後短評) を oldmac.o_new_horse から
+const
+NewHorseComment = ( clusters, ketto, priorStarts ) => {
+	const
+	oh = OldmacHorseIndex( clusters ).byKetto.get( String( ketto ) )
+	if ( !oh ) return null
+	const
+	nh = clusters.oldmac.o_new_horse
+	,	line = nh.getByKey( String( oh.HORSE ) )
+	if ( !line ) return null
+	const
+	f = nh.meta().fields
+	,	r = JSON.parse( line )
+	,	get = name => String( r[ f.indexOf( name ) ] ?? '' ).trim()
+	,	text = priorStarts === 0 ? get( 'CONTENT1' ) : get( 'CONTENT2' )
+	if ( !text ) return null
+	return { syosen: get( 'SYOSEN' ), text, phase: priorStarts === 0 ? 'デビュー前' : '初戦後' }
+}
+
+const
+RaceCard = ( clusters, { year, monthday, jyo, kaiji, nichiji, racenum } ) => {
+	const
+	se = clusters.jv.jv_se_race_uma
+	,	raceDate = Number( `${ year }${ monthday }` )
+	,	ra = RaceByKey( clusters, [ year, monthday, jyo, kaiji, nichiji, racenum ].join( '|' ) )
+	,	horses = []
+	for ( const [ , line ] of se.scan( `${ year }|${ monthday }|${ jyo }|${ kaiji }|${ nichiji }|${ racenum }|` ) ) {
+		const
+		h = JSON.parse( line )
+		//	'2'=出馬表(未施行), '7'/'A'/'B'=確定成績。どちらも出走表として扱う。
+		if ( ![ '2', '7', 'A', 'B' ].includes( h.head_DataKubun ) ) continue
+		const
+		{ starts, rec, chaku, ijyo } = CareerRecord( se, h.KettoNum, raceDate )
+		,	comment = starts <= 1 ? NewHorseComment( clusters, h.KettoNum, starts ) : null
+		horses.push( {
+			wakuban: h.Wakuban, umaban: h.Umaban, ketto: String( h.KettoNum )
+		,	bamei: String( h.Bamei ?? '' ).trim()
+		,	sexBarei: `${ SexShort( h.SexCD ) }${ Number( h.Barei ) || '' }`
+		,	futan: h.Futan
+		,	jockey: String( h.KisyuRyakusyo ?? '' ).trim()
+		,	chokyosi: String( h.ChokyosiRyakusyo ?? '' ).trim()
+		,	tozai: TozaiStr( h.TozaiCD )
+		,	baTaijyu: h.BaTaijyu, zogenFugo: h.ZogenFugo, zogenSa: h.ZogenSa
+		,	priorStarts: starts, comment
+		,	record: starts >= 2 ? rec : null	//	[1,2,3,4,5,着外]
+		,	soleChaku: chaku, soleIjyo: ijyo	//	1走の着順(0=なし)/異常区分
+		} )
+	}
+	horses.sort( ( a, b ) => Number( a.umaban ) - Number( b.umaban ) )
+
+	const
+	td = ra ? TDH( ra ) : ''
+	return {
+		race: ra ? {
+			title: RaceName( ra ), grade: String( ra.GradeCD ?? '' ), td, distance: AsInt( ra, 'Kyori' )
+		,	jyoName: JyoCD2StrJPN( jyo ) || jyo, racenum: String( racenum ), year, monthday, kaiji, nichiji
+		,	tosu: AsInt( ra, 'SyussoTosu' ) || AsInt( ra, 'TorokuTosu' )
+		,	baba: td === 'ダ' ? BabaD( ra ) : BabaT( ra )
+		} : null
+	,	horses
+	}
 }
 
 ///////////////////////////////	RaceResults
@@ -614,7 +1178,58 @@ UmaNextHorse = clusters => {
 
 export const
 APIRoutes = clusters => ( {
-	'/api/race-day': async ( Q, S ) => {
+	'/api/calendar': async ( Q, S ) => {
+		const
+		q = QueryOf( Q )
+		SendJSONable( S, Calendar( clusters, q.get( 'year' ), q.get( 'jyo' ) ) )
+	}
+,	'/api/year-races': async ( Q, S ) => {
+		const
+		q = QueryOf( Q )
+		SendJSONable( S, YearRaces( clusters, q.get( 'year' ) ) )
+	}
+,	'/api/ranking': async ( Q, S ) => {
+		const
+		q = QueryOf( Q )
+		try {
+			SendJSONable( S, Ranking( clusters, q.get( 'from' ), q.get( 'to' ), q.get( 'kind' ) ) )
+		} catch ( e ) {
+			if ( !e.status ) throw e
+			Send( S, e.status, e.message )
+		}
+	}
+,	'/api/results': async ( Q, S ) => {
+		const
+		q = QueryOf( Q )
+		try {
+			SendJSONable( S, EntityResults( clusters, q.get( 'kind' ), q.get( 'code' ), q.get( 'from' ), q.get( 'to' ) ) )
+		} catch ( e ) {
+			if ( !e.status ) throw e
+			Send( S, e.status, e.message )
+		}
+	}
+,	'/api/horses': async ( Q, S ) => {
+		const
+		q = QueryOf( Q )
+		try {
+			SendJSONable( S, SearchHorses( clusters, q.get( 'text' ) ?? '', q.get( 'type' ) ?? '前方一致' ) )
+		} catch ( e ) {
+			if ( !e.status ) throw e
+			Send( S, e.status, e.message )
+		}
+	}
+,	'/api/latest-week': async ( Q, S ) => {
+		SendJSONable( S, LatestWeek( clusters ) )
+	}
+,	'/api/racecard': async ( Q, S ) => {
+		const
+		q = QueryOf( Q )
+		SendJSONable( S, RaceCard( clusters, {
+			year: q.get( 'year' ), monthday: q.get( 'monthday' ), jyo: q.get( 'jyo' )
+		,	kaiji: q.get( 'kaiji' ), nichiji: q.get( 'nichiji' ), racenum: q.get( 'racenum' )
+		} ) )
+	}
+,	'/api/race-day': async ( Q, S ) => {
 		const
 		q = QueryOf( Q )
 		SendJSONable( S, RacesOfDay( clusters, q.get( 'year' ), q.get( 'jyo' ), q.get( 'kaiji' ), q.get( 'nichiji' ) ) )

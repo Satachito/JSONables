@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>競馬データ検索ポータル</title>
+<link rel="stylesheet" href="/apps/shared/ui.css">
+<link rel="stylesheet" href="/apps/portal/style.css">
+</head>
+<body>
+<header class="appbar">
+	<h1>競馬データ検索ポータル</h1>
+	<nav>
+		<a href="/apps/sql/">SQL</a>
+	</nav>
+</header>
+
+<div class="tabs">
+	<button data-tab="race" class="active">レース検索</button>
+	<button data-tab="card">出走表</button>
+	<button data-tab="horse">馬名検索</button>
+	<button data-tab="jockey">騎手検索</button>
+	<button data-tab="trainer">調教師検索</button>
+	<button data-tab="owner">馬主検索</button>
+</div>
+
+<main>
+	<!--	レース検索	-->
+	<section id="tab-race" class="tab">
+		<div class="portal">
+			<aside class="side">
+				<div class="controls">
+					<label class="side-title">年度</label>
+					<select id="race-year"></select>
+				</div>
+				<div id="race-tree" class="racetree"></div>
+			</aside>
+			<div class="content">
+				<div id="race-result" class="result"></div>
+			</div>
+		</div>
+	</section>
+
+	<!--	出走表（最新開催週）	-->
+	<section id="tab-card" class="tab" hidden>
+		<div class="portal">
+			<aside class="side">
+				<div class="controls"><span class="side-title">最新開催週</span></div>
+				<div id="card-week" class="calendar"></div>
+			</aside>
+			<div class="content">
+				<div id="card-races" class="racechips"></div>
+				<div id="card-result" class="result"></div>
+			</div>
+		</div>
+	</section>
+
+	<!--	馬名検索	-->
+	<section id="tab-horse" class="tab" hidden>
+		<div class="toolbar">
+			<label class="period">期間 <input type="date" id="horse-from" class="rank-date"> 〜 <input type="date" id="horse-to" class="rank-date"></label>
+			<input type="text" id="horse-text" placeholder="馬名" size="20">
+			<select id="horse-type">
+				<option>前方一致</option>
+				<option>後方一致</option>
+				<option>含む</option>
+				<option>一致</option>
+			</select>
+			<button id="horse-search">検索</button>
+			<span id="horse-status" class="status"></span>
+		</div>
+		<div id="horse-back" class="backbar" hidden><button type="button">← 成績順ランキングに戻る</button></div>
+		<div id="horse-result" class="result"></div>
+	</section>
+
+	<!--	騎手検索	-->
+	<section id="tab-jockey" class="tab" hidden>
+		<div class="toolbar">
+			<label class="period">期間 <input type="date" id="jockey-from" class="rank-date"> 〜 <input type="date" id="jockey-to" class="rank-date"></label>
+			<input type="text" id="jockey-text" placeholder="騎手名（部分一致）" size="20">
+			<button id="jockey-search">検索</button>
+			<span id="jockey-status" class="status"></span>
+		</div>
+		<div id="jockey-back" class="backbar" hidden><button type="button">← 成績順ランキングに戻る</button></div>
+		<div id="jockey-result" class="result"></div>
+	</section>
+
+	<!--	調教師検索	-->
+	<section id="tab-trainer" class="tab" hidden>
+		<div class="toolbar">
+			<label class="period">期間 <input type="date" id="trainer-from" class="rank-date"> 〜 <input type="date" id="trainer-to" class="rank-date"></label>
+			<input type="text" id="trainer-text" placeholder="調教師名（部分一致）" size="20">
+			<button id="trainer-search">検索</button>
+			<span id="trainer-status" class="status"></span>
+		</div>
+		<div id="trainer-back" class="backbar" hidden><button type="button">← 成績順ランキングに戻る</button></div>
+		<div id="trainer-result" class="result"></div>
+	</section>
+
+	<!--	馬主検索	-->
+	<section id="tab-owner" class="tab" hidden>
+		<div class="toolbar">
+			<label class="period">期間 <input type="date" id="owner-from" class="rank-date"> 〜 <input type="date" id="owner-to" class="rank-date"></label>
+			<input type="text" id="owner-text" placeholder="馬主名（部分一致）" size="20">
+			<button id="owner-search">検索</button>
+			<span id="owner-status" class="status"></span>
+		</div>
+		<div id="owner-back" class="backbar" hidden><button type="button">← 成績順ランキングに戻る</button></div>
+		<div id="owner-result" class="result"></div>
+	</section>
+</main>
+
+<script type="module" src="/apps/portal/main.js"></script>
+</body>
+</html>
