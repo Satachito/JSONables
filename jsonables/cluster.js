@@ -1,9 +1,9 @@
 //	JSONables clusters: one cluster per table.
 //
 //	On disk:
-//		<dir>/<table>.jsonl        one JSONable per line (Legacy: array, Full: object)
+//		<dir>/<table>.jsons        one JSONable per line (Legacy: array, Full: object)
 //		<dir>/<table>.meta.json    { style, fields?, types?, keyFields }
-//		<dir>/<table>.log.jsonl    write log: {"op":"put"|"del","id":id,"record":...}
+//		<dir>/<table>.log.jsons    write log: {"op":"put"|"del","id":id,"record":...}
 //
 //	In memory records are kept as raw JSON line strings — GET is zero-parse.
 
@@ -29,9 +29,9 @@ MemoryCluster {
 		this.dir		= dir
 		this.table		= table
 		this.writable	= writable
-		this.basePath	= path.join( dir, `${ table }.jsonl` )
+		this.basePath	= path.join( dir, `${ table }.jsons` )
 		this.metaPath	= path.join( dir, `${ table }.meta.json` )
-		this.logPath	= path.join( dir, `${ table }.log.jsonl` )
+		this.logPath	= path.join( dir, `${ table }.log.jsons` )
 		this.map		= new Map()	//	id → raw JSON line
 		this.logical	= new Map()	//	derived keyFields key → id (legacy/import lookup)
 		this.logFD		= null
@@ -189,7 +189,7 @@ MemoryCluster {
 	}
 }
 
-//	Read-only cluster over a large .jsonl whose records are read from disk on demand,
+//	Read-only cluster over a large .jsons whose records are read from disk on demand,
 //	via a prebuilt <table>.idx: JSONL of [ key, offset, len ].
 //	Optional secondary indexes: <table>.<name>.idx, JSONL of [ value, [ keys... ] ],
 //	exposed through lookup( name, value ) → keys.
@@ -199,7 +199,7 @@ IndexedCluster {
 	constructor( dir, table ) {
 		this.dir		= dir
 		this.table		= table
-		this.basePath	= path.join( dir, `${ table }.jsonl` )
+		this.basePath	= path.join( dir, `${ table }.jsons` )
 		this.metaPath	= path.join( dir, `${ table }.meta.json` )
 		this.idxPath	= path.join( dir, `${ table }.idx` )
 		this.map		= new Map()	//	key → [ offset, len ]
