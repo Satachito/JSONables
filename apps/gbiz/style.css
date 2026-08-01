@@ -1,0 +1,236 @@
+/*	appbar / searchbar / 本体 の縦積み。高さの決め打ちはせず残りを本体に使う。
+	このアプリは配色を直に持ち（グラフの配色も白い面で検証済み）、
+	共有トークンのダークモードとは混ぜないのでライトに固定する。	*/
+body {
+	color-scheme: light;
+	background: #fff;
+	color: #222;
+	margin: 0;
+	height: 100vh;
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+}
+
+header.appbar { flex: none; }
+
+.searchbar {
+	display: flex;
+	gap: 8px;
+	align-items: center;
+	padding: 10px 16px;
+	border-bottom: 1px solid #e0e0e0;
+	background: #f7f8fa;
+	flex: none;
+}
+
+.searchbar #q {
+	flex: 1;
+	max-width: 480px;
+	padding: 6px 10px;
+	border: 1px solid #bbb;
+	border-radius: 4px;
+	font-size: 14px;
+}
+
+.searchbar select {
+	padding: 6px;
+	border: 1px solid #bbb;
+	border-radius: 4px;
+}
+
+.searchbar button {
+	padding: 6px 16px;
+	cursor: pointer;
+	border: 1px solid #2b6cb0;
+	background: #2b6cb0;
+	color: #fff;
+	border-radius: 4px;
+}
+
+.searchbar button:hover { background: #245a94; }
+.searchbar .status { color: #667; font-size: 12px; }
+
+.gbiz {
+	display: grid;
+	grid-template-columns: 340px minmax(0, 1fr);
+	flex: 1;
+	min-height: 0;
+}
+
+.results {
+	overflow: auto;
+	border-right: 1px solid #ccc;
+	background: #fafbfc;
+}
+
+.hit {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	width: 100%;
+	text-align: left;
+	border: 0;
+	border-bottom: 1px solid #eceff2;
+	background: transparent;
+	padding: 8px 12px;
+	cursor: pointer;
+}
+
+.hit b { font-size: 13px; color: #1a2b3a; }
+.hit span { font-size: 11px; color: #889; }
+.hit:hover { background: #eef3f9; }
+.hit.active { background: #2b3a4a; }
+.hit.active b, .hit.active span { color: #fff; }
+
+.detail { overflow: auto; padding: 18px 22px; }
+
+.cohead { border-bottom: 2px solid #2b3a4a; padding-bottom: 10px; margin-bottom: 14px; }
+.cohead h2 { margin: 0 0 4px; font-size: 22px; }
+.cohead .sub { color: #667; font-size: 13px; }
+
+.section { margin-bottom: 20px; }
+
+/*	見出し: 基本情報は h3、折りたたみ可能なセクションは summary（同じ見た目）	*/
+.section h3,
+details.section > summary {
+	font-size: 14px;
+	font-weight: bold;
+	color: #2b3a4a;
+	margin: 0 0 8px;
+	padding-left: 8px;
+	border-left: 4px solid #2b6cb0;
+}
+
+details.section > summary {
+	cursor: pointer;
+	user-select: none;
+	list-style: none;
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	padding-top: 2px;
+	padding-bottom: 2px;
+	border-radius: 0 3px 3px 0;
+}
+
+details.section > summary::-webkit-details-marker { display: none; }
+
+/*	開閉マーク	*/
+details.section > summary::before {
+	content: '▶';
+	font-size: 9px;
+	color: #8aa;
+	transition: transform .12s ease;
+}
+details.section[open] > summary::before { transform: rotate(90deg); }
+details.section > summary:hover { background: #f2f5f8; }
+
+.section h3 .cnt,
+details.section > summary .cnt {
+	font-size: 11px;
+	font-weight: normal;
+	color: #fff;
+	background: #8aa;
+	border-radius: 10px;
+	padding: 1px 8px;
+	margin-left: 2px;
+	vertical-align: middle;
+}
+
+.foldbody { padding-top: 2px; }
+
+.pairs {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+	gap: 6px 20px;
+}
+.pair { display: flex; font-size: 13px; border-bottom: 1px dotted #e4e8ec; padding: 3px 0; }
+.pair .k { width: 130px; flex: none; color: #889; }
+.pair .v { flex: 1; min-width: 0; word-break: break-word; }
+
+.tablewrap { overflow-x: auto; }
+table.grid { border-collapse: collapse; width: 100%; font-size: 12px; }
+table.grid th, table.grid td {
+	border: 1px solid #e0e4e8;
+	padding: 4px 8px;
+	text-align: left;
+	vertical-align: top;
+	white-space: nowrap;
+}
+table.grid th { background: #f2f5f8; color: #556; font-weight: bold; }
+table.grid td { white-space: normal; }
+
+/*	財務	*/
+.fin-block {
+	border: 1px solid #e4e8ec;
+	border-radius: 4px;
+	padding: 10px 12px;
+	margin-bottom: 12px;
+	background: #fcfdfe;
+}
+.fin-title { font-weight: bold; font-size: 13px; color: #1a2b3a; margin-bottom: 8px; }
+.fin-title .fin-meta { font-weight: normal; font-size: 11px; color: #889; margin-left: 10px; }
+.fin-sub {
+	font-size: 12px;
+	color: #556;
+	font-weight: bold;
+	margin: 10px 0 4px;
+}
+.fin-block table.grid td.amount { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.fin-block table.grid { max-width: 560px; }
+
+.fin-note { font-size: 11px; color: #889; margin-bottom: 6px; }
+
+/*	推移グラフ	*/
+.chart { margin: 10px 0 16px; max-width: 560px; }
+
+.chart-title { font-size: 12px; font-weight: bold; color: #0b0b0b; }
+.chart-title .chart-unit { font-weight: normal; color: #898781; margin-left: 4px; }
+
+.chart .legend { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 4px 0 2px; }
+.chart .lg { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; color: #52514e; }
+.chart .lg i { width: 10px; height: 2px; border-radius: 1px; }
+
+.chart-body { position: relative; }
+.chart svg { width: 100%; display: block; overflow: visible; }
+.chart .ax { font-size: 10px; fill: #898781; font-variant-numeric: tabular-nums; }
+.chart .endlabel { font-size: 10px; fill: #52514e; font-variant-numeric: tabular-nums; }
+.chart .hit { cursor: crosshair; }
+
+.chart-tip {
+	position: absolute;
+	top: 0;
+	pointer-events: none;
+	background: #fff;
+	border: 1px solid rgba(11, 11, 11, .12);
+	border-radius: 4px;
+	box-shadow: 0 2px 8px rgba(11, 11, 11, .12);
+	padding: 5px 8px;
+	font-size: 11px;
+	white-space: nowrap;
+	z-index: 2;
+}
+
+.chart-tip b { display: block; margin-bottom: 3px; color: #0b0b0b; }
+.chart-tip .tr { display: flex; align-items: center; gap: 5px; color: #52514e; }
+.chart-tip .tr i { width: 8px; height: 2px; border-radius: 1px; flex: none; }
+.chart-tip .tr em { margin-left: auto; padding-left: 12px; font-style: normal; font-variant-numeric: tabular-nums; color: #0b0b0b; }
+
+/*	経営指標等の推移: 行=指標, 列=回次(4期前→当期)	*/
+table.fin-trend { max-width: none; }
+table.fin-trend tbody th {
+	background: #f7f9fb;
+	color: #556;
+	font-weight: bold;
+	text-align: left;
+	white-space: nowrap;
+}
+table.fin-trend thead th { text-align: right; }
+table.fin-trend thead th:first-child { text-align: left; }
+table.fin-trend td.unit { color: #889; white-space: nowrap; font-size: 11px; }
+table.fin-trend thead th:last-child { background: #eef3f9; color: #1a4e8a; }
+table.fin-trend tbody td:last-child { font-weight: bold; }
+
+.empty { color: #888; padding: 20px; }
+.error { color: #b00; white-space: pre-wrap; padding: 12px; }

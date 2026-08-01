@@ -1,0 +1,6 @@
+_*
+node_modules/
+data/*
+!data/deumacodes.js
+.DS_Store
+gBizINFO/

@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="400">
+<rect width="1200" height="400" fill="white"/>
+<text x="60" y="160" font-size="96" font-family="Arial" font-weight="bold">JSONables</text>
+<text x="65" y="240" font-size="40" font-family="Arial">Everything is a JSONable.</text>
+<rect x="760" y="80" width="220" height="160" fill="none" stroke="black" stroke-width="5"/>
+<text x="810" y="175" font-size="56" font-family="monospace">{ }</text>
+</svg>

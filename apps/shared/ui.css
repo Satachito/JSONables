@@ -1,0 +1,178 @@
+/*	Shared minimal UI for the editor apps. */
+
+/*	カラートークン: ライトが既定、OS設定がダークなら @media で上書き。	*/
+:root {
+	color-scheme: light dark;
+
+	--bg			: #fff;
+	--panel			: #f7f8fa;	/*	サイドバー・表ヘッダ・タブ地	*/
+	--hover			: #eef3f9;
+	--active-bg		: #2b3a4a;	/*	選択行・チップ	*/
+	--active-fg		: #fff;
+	--active-muted	: #cfe0f0;
+	--fg			: #222;
+	--fg-strong		: #2b3a4a;	/*	見出し・強調	*/
+	--muted			: #556;
+	--faint			: #8892a0;
+	--border		: #bbb;
+	--border-light	: #dde3ea;
+	--link			: #2b6cb0;
+	--link-strong	: #1a4e8a;
+	--gold			: #b8860b;
+	--danger		: #b00;
+	--appbar-bg		: #2b3a4a;
+	--note-bg		: #fbf7e9;	/*	コメント行	*/
+	--note-fg		: #5a4a2a;
+	--sire-bg		: #eef4fb;	/*	血統表	*/
+	--dam-bg		: #fbeef2;
+	--select-bg		: #dbeafe;	/*	グリッド選択	*/
+	--edit-bg		: #fffbe6;
+	--new-bg		: #f0fff0;
+	--focus			: #3b82f6;
+}
+
+@media (prefers-color-scheme: dark) {
+	:root {
+		--bg			: #16191d;
+		--panel			: #1e2228;
+		--hover			: #2a313a;
+		--active-bg		: #33506e;
+		--active-fg		: #fff;
+		--active-muted	: #b8d2ea;
+		--fg			: #d6d9de;
+		--fg-strong		: #c3d3e2;
+		--muted			: #a0a8b4;
+		--faint			: #7d8694;
+		--border		: #444c56;
+		--border-light	: #333a43;
+		--link			: #7ab1ec;
+		--link-strong	: #9cc4f0;
+		--gold			: #d9a845;
+		--danger		: #f07070;
+		--appbar-bg		: #232c36;
+		--note-bg		: #332e1f;
+		--note-fg		: #d8c8a0;
+		--sire-bg		: #24313f;
+		--dam-bg		: #3a2a31;
+		--select-bg		: #2b4059;
+		--edit-bg		: #3a3626;
+		--new-bg		: #223122;
+	}
+}
+
+* { box-sizing: border-box; }
+
+body {
+	margin: 0;
+	font-family: 'Hiragino Kaku Gothic ProN', sans-serif;
+	font-size: 13px;
+	color: var(--fg);
+	background: var(--bg);
+}
+
+header.appbar {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	padding: 8px 12px;
+	background: var(--appbar-bg);
+	color: #fff;
+}
+
+header.appbar h1 {
+	font-size: 15px;
+	margin: 0;
+}
+
+header.appbar nav a {
+	color: var(--active-muted);
+	margin-right: 8px;
+	text-decoration: none;
+}
+
+.tabs {
+	display: flex;
+	gap: 2px;
+	padding: 6px 12px 0;
+	border-bottom: 1px solid var(--border);
+}
+
+.tabs button {
+	border: 1px solid var(--border);
+	border-bottom: none;
+	background: var(--panel);
+	padding: 6px 14px;
+	cursor: pointer;
+	border-radius: 4px 4px 0 0;
+	color: var(--fg);
+}
+
+.tabs button.active {
+	background: var(--bg);
+	font-weight: bold;
+}
+
+.toolbar {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 8px 12px;
+}
+
+.toolbar input[type=text] {
+	padding: 4px 6px;
+	border: 1px solid var(--border);
+	border-radius: 3px;
+}
+
+.toolbar button {
+	padding: 4px 12px;
+	cursor: pointer;
+}
+
+.toolbar .status {
+	margin-left: auto;
+	color: var(--muted);
+}
+
+.toolbar .status.dirty {
+	color: var(--danger);
+	font-weight: bold;
+}
+
+.gridbox {
+	overflow: auto;
+	height: calc(100vh - 130px);
+	padding: 0 12px 12px;
+}
+
+table.grid {
+	border-collapse: collapse;
+	width: max-content;
+}
+
+table.grid th, table.grid td {
+	border: 1px solid var(--border-light);
+	padding: 2px 6px;
+	white-space: nowrap;
+}
+
+table.grid th {
+	position: sticky;
+	top: 0;
+	background: var(--panel);
+	z-index: 1;
+}
+
+table.grid tr.selected td {
+	background: var(--select-bg);
+}
+
+table.grid td[contenteditable]:focus {
+	outline: 2px solid var(--focus);
+	background: var(--edit-bg);
+}
+
+table.grid tr.new td {
+	background: var(--new-bg);
+}
